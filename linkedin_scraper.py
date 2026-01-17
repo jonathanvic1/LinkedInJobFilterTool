@@ -95,31 +95,36 @@ class LinkedInScraper:
         print("🔧 Initialized scraper with curl_cffi Chrome 136 impersonation and Authenticated Session")
 
     def load_cookies(self):
-        """Load cookies from userCookie.txt and extract CSRF token."""
-        try:
-            with open('userCookie.txt', 'r') as f:
-                cookie_str = f.read().strip()
-            
-            # Simple parsing of cookie string "key=value; key2=value2"
-            cookies = {}
-            for item in cookie_str.split(';'):
-                if '=' in item:
-                    k, v = item.strip().split('=', 1)
-                    cookies[k] = v.strip('"') # Strip quotes if present
-            
-            self.session.cookies.update(cookies)
-            
-            # Extract JSESSIONID for CSRF token
-            # It matches JSESSIONID="ajax:..."
-            self.csrf_token = cookies.get('JSESSIONID')
-            if not self.csrf_token:
-                 print("⚠️  Warning: JSESSIONID not found in cookies. Requests might fail.")
-            else:
-                 print(f"🔑 CSRF Token loaded: {self.csrf_token}")
-                 
-        except FileNotFoundError:
-            print("❌ Error: userCookie.txt not found! Please create it with your LinkedIn cookies.")
-            sys.exit(1)
+        """Load cookies from env var or file and extract CSRF token."""
+        cookie_str = os.environ.get('LINKEDIN_COOKIES')
+        
+        if not cookie_str:
+            try:
+                with open('userCookie.txt', 'r') as f:
+                    cookie_str = f.read().strip()
+            except FileNotFoundError:
+                print("❌ Error: LINKEDIN_COOKIES env var not set and userCookie.txt not found!")
+                # On Vercel, this is fatal if env var is missing
+                return
+
+        if not cookie_str:
+            return
+
+        # Simple parsing of cookie string "key=value; key2=value2"
+        cookies = {}
+        for item in cookie_str.split(';'):
+            if '=' in item:
+                k, v = item.strip().split('=', 1)
+                cookies[k] = v.strip('"') # Strip quotes if present
+        
+        self.session.cookies.update(cookies)
+        
+        # Extract JSESSIONID for CSRF token
+        self.csrf_token = cookies.get('JSESSIONID')
+        if not self.csrf_token:
+                print("⚠️  Warning: JSESSIONID not found in cookies. Requests might fail.")
+        else:
+                print(f"🔑 CSRF Token loaded from {'Environment Variable' if os.environ.get('LINKEDIN_COOKIES') else 'File'}")
 
     def log_error(self, error: str):
         """Log error messages to file."""
