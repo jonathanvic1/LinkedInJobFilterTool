@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from linkedin_scraper import LinkedInScraper
 
-app = FastAPI(title="Linkedin Job Filter")
+app = FastAPI(title="LinkedIn Job Filter Tool")
 
 # CORS (allow all for local dev)
 app.add_middleware(

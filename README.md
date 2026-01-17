@@ -1,4 +1,4 @@
-# Linkedin Job Filter
+# LinkedIn Job Filter Tool
 
 A robust Python-based tool designed to filter and manage job postings availability from LinkedIn. It provides a filtering mechanism to hide irrelevant jobs and focus on opportunities that match your specific criteria.
 
