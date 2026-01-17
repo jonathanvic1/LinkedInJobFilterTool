@@ -35,27 +35,33 @@ app.add_middleware(
 )
 
 # Public routes that don't need auth
-PUBLIC_ROUTES = ["/api/auth/config", "/login.html", "/js/auth.js", "/favicon.ico", "/js/login.js"]
+# We allow the frontend shell to load, JS will handle the UI-level redirect.
+# All sensitive data APIs remain strictly protected.
+PUBLIC_ROUTES = ["/api/auth/config", "/login.html", "/js/auth.js", "/favicon.ico", "/", "/index.html"]
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    # Allow public routes
     path = request.url.path
-    if any(path.startswith(route) for route in PUBLIC_ROUTES):
+    
+    # 1. Allow explicit public routes
+    if path in PUBLIC_ROUTES:
         return await call_next(request)
     
-    # Allow static assets if they are likely CSS/IMG (optimization)
-    if path.endswith((".css", ".png", ".jpg", ".svg", ".ico", ".js")) and "js/app.js" not in path:
+    # 2. Allow static assets (CSS, Images, and non-sensitive JS)
+    # We allow all .js now but stay vigilant on /api
+    if path.endswith((".css", ".png", ".jpg", ".svg", ".ico", ".js")):
          return await call_next(request)
 
-    # Check Authorization header (Bearer TOKEN)
+    # 3. Protect all other routes (especially /api/*)
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        # For browser GET requests to HTML pages, redirect to login
-        if request.method == "GET" and ("text/html" in request.headers.get("Accept", "")):
-             from fastapi.responses import RedirectResponse
-             return RedirectResponse(url="/login.html")
-        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+        # If it's an API call, return 401
+        if path.startswith("/api/"):
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+        
+        # For other page loads, redirect to login
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/login.html")
 
     token = auth_header.split(" ")[1]
     
