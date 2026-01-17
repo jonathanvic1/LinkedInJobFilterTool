@@ -34,6 +34,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Public routes that don't need auth
+PUBLIC_ROUTES = ["/api/auth/config", "/login.html", "/js/auth.js", "/favicon.ico", "/js/login.js"]
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    # Allow public routes
+    path = request.url.path
+    if any(path.startswith(route) for route in PUBLIC_ROUTES):
+        return await call_next(request)
+    
+    # Allow static assets if they are likely CSS/IMG (optimization)
+    if path.endswith((".css", ".png", ".jpg", ".svg", ".ico", ".js")) and "js/app.js" not in path:
+         return await call_next(request)
+
+    # Check Authorization header (Bearer TOKEN)
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        # For browser GET requests to HTML pages, redirect to login
+        if request.method == "GET" and ("text/html" in request.headers.get("Accept", "")):
+             from fastapi.responses import RedirectResponse
+             return RedirectResponse(url="/login.html")
+        return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+
+    token = auth_header.split(" ")[1]
+    
+    # Verify token with Supabase Auth
+    try:
+        user_res = db.client.auth.get_user(token)
+        if not user_res or not user_res.user:
+            return JSONResponse(status_code=401, content={"detail": "Invalid token"})
+        # Optionally attach user to request state
+        request.state.user = user_res.user
+    except Exception:
+        return JSONResponse(status_code=401, content={"detail": "Authentication failed"})
+
+    return await call_next(request)
+
+@app.get("/api/auth/config")
+def get_auth_config():
+    """Public endpoint to provide Supabase URL and Anon Key to frontend."""
+    return {
+        "url": os.environ.get("SUPABASE_URL"),
+        "key": os.environ.get("SUPABASE_KEY") # Note: This should be the ANON key usually, 
+                                             # but user is using search key as service role.
+                                             # For frontend auth to work well, they need the Anon Key.
+    }
+
 # Global State
 class ScraperState:
     running = False

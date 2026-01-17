@@ -4,6 +4,29 @@ let logInterval = null;
 let historyOffset = 0;
 let historyLimit = 50;
 
+// Auth Fetch Helper
+async function apiFetch(url, options = {}) {
+    const token = await authClient.getSessionToken();
+    if (!token && !url.includes('/api/auth/config')) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+    };
+
+    const res = await fetch(url, { ...options, headers });
+
+    if (res.status === 401) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    return res;
+}
+
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     loadConfig();
@@ -47,7 +70,7 @@ function switchTab(tabId) {
 // API Interactions
 async function loadConfig() {
     try {
-        const res = await fetch('/api/config');
+        const res = await apiFetch('/api/config');
         const config = await res.json();
 
         document.getElementById('keywords').value = config.keywords || '';
@@ -86,7 +109,7 @@ async function startScraper() {
     };
 
     try {
-        const res = await fetch('/api/start', {
+        const res = await apiFetch('/api/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -108,7 +131,7 @@ async function startScraper() {
 
 async function stopScraper() {
     try {
-        await fetch('/api/stop', { method: 'POST' });
+        await apiFetch('/api/stop', { method: 'POST' });
         // Don't immediately set status false, let polling handle it
     } catch (e) {
         console.error("Stop failed", e);
@@ -118,7 +141,7 @@ async function stopScraper() {
 function startStatusPolling() {
     setInterval(async () => {
         try {
-            const res = await fetch('/api/status');
+            const res = await apiFetch('/api/status');
             const data = await res.json();
 
             updateStatus(data.running);
@@ -184,7 +207,7 @@ async function saveBlocklist(filename) {
     const content = document.getElementById(id).value;
 
     try {
-        await fetch('/api/blocklist', {
+        await apiFetch('/api/blocklist', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ filename, content })
@@ -197,7 +220,7 @@ async function saveBlocklist(filename) {
 async function loadHistory(offset = 0) {
     historyOffset = offset;
     try {
-        const res = await fetch(`/api/history?limit=${historyLimit}&offset=${historyOffset}`);
+        const res = await apiFetch(`/api/history?limit=${historyLimit}&offset=${historyOffset}`);
         const data = await res.json();
         const history = data.items;
         const total = data.total;
@@ -246,8 +269,8 @@ async function loadHistory(offset = 0) {
 // Locations (GeoID Cache)
 async function loadGeoCache() {
     try {
-        const res = await fetch('/api/config'); // Ensure config is synced
-        const cacheRes = await fetch('/api/geo_cache');
+        const res = await apiFetch('/api/config'); // Ensure config is synced
+        const cacheRes = await apiFetch('/api/geo_cache');
         const cache = await cacheRes.json();
 
         // 1. Master GeoID Cache
@@ -291,7 +314,7 @@ async function loadGeoCache() {
 async function deleteGeoCacheEntry(query) {
     if (!confirm('Are you sure you want to clear this cached location?')) return;
     try {
-        await fetch(`/api/geo_cache/${encodeURIComponent(query)}`, {
+        await apiFetch(`/api/geo_cache/${encodeURIComponent(query)}`, {
             method: 'DELETE'
         });
         loadGeoCache();
@@ -311,7 +334,7 @@ async function openCorrectionModal(query, masterId) {
     modal.classList.remove('hidden');
 
     try {
-        const res = await fetch(`/api/geo_candidates/${masterId}`);
+        const res = await apiFetch(`/api/geo_candidates/${masterId}`);
         const candidates = await res.json();
 
         if (candidates.length === 0) {
@@ -338,7 +361,7 @@ function closeGeoModal() {
 
 async function applyGeoOverride(query, ppId, ppName) {
     try {
-        const res = await fetch('/api/geo_cache/override', {
+        const res = await apiFetch('/api/geo_cache/override', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ query, pp_id: ppId, pp_name: ppName })
