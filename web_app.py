@@ -5,7 +5,8 @@ import time
 import json
 import time
 import json
-import sqlite3
+import json
+from database import db
 import uvicorn
 import subprocess
 import signal
@@ -237,63 +238,15 @@ def save_blocklist(update: BlocklistUpdate):
 
 @app.get("/api/history")
 def get_history(limit: int = 100):
-    conn = sqlite3.connect('dismissed_jobs.db')
-    cursor = conn.cursor()
-    try:
-        cursor.execute('SELECT job_id, title, company, location, dismiss_reason, dismissed_at, job_url FROM dismissed_jobs ORDER BY dismissed_at DESC LIMIT ?', (limit,))
-        rows = cursor.fetchall()
-        
-        history = []
-        for row in rows:
-            history.append({
-                "job_id": row[0],
-                "title": row[1],
-                "company": row[2],
-                "location": row[3],
-                "reason": row[4],
-                "date": row[5],
-                "url": row[6]
-            })
-        return history
-    except Exception as e:
-        return []
-    finally:
-        conn.close()
+    return db.get_history(limit)
 
 @app.get("/api/geo_cache")
 def get_geo_cache():
-    conn = sqlite3.connect('dismissed_jobs.db')
-    cursor = conn.cursor()
-    try:
-        cursor.execute('SELECT location_query, master_geo_id, populated_place_id, place_name FROM geo_cache ORDER BY location_query ASC')
-        rows = cursor.fetchall()
-        
-        cache = []
-        for row in rows:
-            cache.append({
-                "query": row[0].title(),
-                "master_id": row[1],
-                "pp_id": row[2],
-                "name": row[3]
-            })
-        return cache
-    except Exception as e:
-        return []
-    finally:
-        conn.close()
+    return db.get_all_geo_cache()
 
 @app.get("/api/geo_candidates/{master_id}")
 def get_geo_candidates(master_id: str):
-    conn = sqlite3.connect('dismissed_jobs.db')
-    cursor = conn.cursor()
-    try:
-        cursor.execute('SELECT pp_id, pp_name FROM geo_candidates WHERE master_geo_id = ? ORDER BY pp_name ASC', (master_id,))
-        rows = cursor.fetchall()
-        return [{"id": r[0], "name": r[1]} for r in rows]
-    except Exception as e:
-        return []
-    finally:
-        conn.close()
+    return db.get_geo_candidates(master_id)
 
 class OverrideRequest(BaseModel):
     query: str
@@ -302,33 +255,19 @@ class OverrideRequest(BaseModel):
 
 @app.post("/api/geo_cache/override")
 def override_geo_cache(req: OverrideRequest):
-    conn = sqlite3.connect('dismissed_jobs.db')
-    cursor = conn.cursor()
     try:
-        cursor.execute('''
-            UPDATE geo_cache 
-            SET populated_place_id = ?, place_name = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE location_query = ?
-        ''', (req.pp_id, req.pp_name, req.query.title()))
-        conn.commit()
+        db.update_geo_cache_override(req.query, req.pp_id, req.pp_name)
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        conn.close()
 
 @app.delete("/api/geo_cache/{query}")
 def delete_geo_cache_entry(query: str):
-    conn = sqlite3.connect('dismissed_jobs.db')
-    cursor = conn.cursor()
     try:
-        cursor.execute('DELETE FROM geo_cache WHERE location_query = ?', (query.title(),))
-        conn.commit()
+        db.delete_geo_cache_entry(query)
         return {"status": "deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        conn.close()
 
 # --- Serve Static Files ---
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

@@ -1,0 +1,196 @@
+import os
+from supabase import create_client, Client
+from datetime import datetime
+import json
+
+class Database:
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(Database, cls).__new__(cls)
+            cls._instance._init_client()
+        return cls._instance
+    
+    def _init_client(self):
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_KEY")
+        
+        if not url or not key:
+            print("⚠️ SUPABASE_URL or SUPABASE_KEY not found in environment variables. DB operations will fail.")
+            self.client = None
+        else:
+            try:
+                self.client: Client = create_client(url, key)
+                print("✅ Supabase client initialized")
+            except Exception as e:
+                print(f"❌ Failed to initialize Supabase: {e}")
+                self.client = None
+
+    def is_job_dismissed(self, job_id):
+        if not self.client: return False
+        try:
+            response = self.client.table("dismissed_jobs").select("job_id").eq("job_id", job_id).execute()
+            return len(response.data) > 0
+        except Exception as e:
+            print(f"⚠️ DB Error (is_job_dismissed): {e}")
+            return False
+
+    def save_dismissed_job(self, job_id, title, company, location, reason, job_url, company_url, is_reposted=False, listed_at=None):
+        if not self.client: return
+        data = {
+            "job_id": job_id,
+            "title": title,
+            "company": company,
+            "location": location,
+            "dismiss_reason": reason,
+            "job_url": job_url,
+            "company_linkedin": company_url,
+            "is_reposted": is_reposted,
+            "listed_at": listed_at,
+            # dismissed_at defaults to NOW() in DB
+        }
+        try:
+            self.client.table("dismissed_jobs").upsert(data).execute()
+            print(f"   💾 Saved to Supabase: {title}")
+        except Exception as e:
+            print(f"   ⚠️ DB Error (save_dismissed_job): {e}")
+
+    def delete_dismissed_job(self, job_id):
+        if not self.client: return False
+        try:
+            self.client.table("dismissed_jobs").delete().eq("job_id", job_id).execute()
+            print(f"   🗑️  Removed from Supabase: Job ID {job_id}")
+            return True
+        except Exception as e:
+            print(f"   ⚠️ DB Error (delete_dismissed_job): {e}")
+            return False
+
+    def get_geo_cache(self, query):
+        if not self.client: return None
+        try:
+            response = self.client.table("geo_cache").select("*").eq("location_query", query.lower()).execute()
+            if response.data:
+                return response.data[0]
+        except Exception as e:
+            print(f"   ⚠️ DB Error (get_geo_cache): {e}")
+        return None
+
+    def save_geo_cache(self, location_query, master_geo_id, populated_place_id, place_name):
+        if not self.client: return
+        data = {
+            "location_query": location_query.lower(),
+            "master_geo_id": master_geo_id,
+            "populated_place_id": populated_place_id,
+            "place_name": place_name,
+            # updated_at defaults to NOW()
+        }
+        try:
+            self.client.table("geo_cache").upsert(data).execute()
+        except Exception as e:
+            print(f"   ⚠️ DB Error (save_geo_cache): {e}")
+
+    def update_geo_cache_override(self, location_query, populated_place_id, place_name):
+         if not self.client: return
+         try:
+             self.client.table("geo_cache").update({
+                 "populated_place_id": populated_place_id,
+                 "place_name": place_name,
+                 "updated_at": "now()"
+             }).eq("location_query", location_query.lower()).execute()
+         except Exception as e:
+             raise e
+
+    def get_geo_candidates(self, master_geo_id):
+        if not self.client: return []
+        try:
+            response = self.client.table("geo_candidates").select("*").eq("master_geo_id", master_geo_id).execute()
+            return [{"id": r['pp_id'], "name": r['pp_name']} for r in response.data]
+        except Exception as e:
+            print(f"   ⚠️ DB Error (get_geo_candidates): {e}")
+            return []
+
+    def save_geo_candidates(self, master_geo_id, candidates):
+        if not self.client: return
+        rows = []
+        for c in candidates:
+            rows.append({
+                "master_geo_id": master_geo_id,
+                "pp_id": c['id'],
+                "pp_name": c['name']
+            })
+        if rows:
+            try:
+                self.client.table("geo_candidates").upsert(rows).execute()
+            except Exception as e:
+                print(f"   ⚠️ DB Error (save_geo_candidates): {e}")
+                
+    def get_earliest_duplicate(self, title, company):
+        if not self.client: return None
+        try:
+            # Supabase Python client currently doesn't support complex ordering in a simple way as robustly as SQL
+            # But .order('listed_at', desc=False) works
+            response = self.client.table("dismissed_jobs")\
+                .select("job_id")\
+                .eq("title", title)\
+                .eq("company", company)\
+                .order("listed_at", desc=False)\
+                .limit(1)\
+                .execute()
+            
+            if response.data:
+                return response.data[0]['job_id']
+        except Exception as e:
+             print(f"   ⚠️ DB Error (get_earliest_duplicate): {e}")
+        return None
+
+    def get_history(self, limit=100):
+        if not self.client: return []
+        try:
+            response = self.client.table("dismissed_jobs")\
+                .select("*")\
+                .order("dismissed_at", desc=True)\
+                .limit(limit)\
+                .execute()
+            
+            # Map back to API format
+            history = []
+            for row in response.data:
+                history.append({
+                    "job_id": row.get('job_id'),
+                    "title": row.get('title'),
+                    "company": row.get('company'),
+                    "location": row.get('location'),
+                    "reason": row.get('dismiss_reason'),
+                    "date": row.get('dismissed_at'),
+                    "url": row.get('job_url')
+                })
+            return history
+        except Exception as e:
+            print(f"DB Error (history): {e}")
+            return []
+
+    def get_all_geo_cache(self):
+        if not self.client: return []
+        try:
+            response = self.client.table("geo_cache").select("*").order("location_query", desc=False).execute()
+            cache = []
+            for row in response.data:
+                cache.append({
+                    "query": row.get('location_query', '').title(),
+                    "master_id": row.get('master_geo_id'),
+                    "pp_id": row.get('populated_place_id'),
+                    "name": row.get('place_name')
+                })
+            return cache
+        except Exception as e:
+            return []
+    
+    def delete_geo_cache_entry(self, query):
+        if not self.client: return
+        try:
+             self.client.table("geo_cache").delete().eq("location_query", query.lower()).execute()
+        except Exception as e:
+            raise e
+
+db = Database()

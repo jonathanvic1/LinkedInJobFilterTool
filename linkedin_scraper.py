@@ -18,8 +18,9 @@ import sys
 import os
 import json
 import urllib.parse
-import sqlite3
+import urllib.parse
 from typing import List, Dict, Optional
+from database import db
 
 # URLs
 VOYAGER_API_URL = 'https://www.linkedin.com/voyager/api/voyagerJobsDashJobCards'
@@ -126,106 +127,21 @@ class LinkedInScraper:
             f.write(f"{datetime.now()} ERROR {error}\n")
     
     def init_db(self):
-        """Initialize SQLite database for dismissed jobs."""
-        try:
-            self.conn = sqlite3.connect('dismissed_jobs.db')
-            self.cursor = self.conn.cursor()
-            
-            # Create table with new column order if not exists
-            self.cursor.execute('''
-                CREATE TABLE IF NOT EXISTS dismissed_jobs (
-                    job_id TEXT PRIMARY KEY,
-                    job_url TEXT,
-                    title TEXT,
-                    company TEXT,
-                    company_linkedin TEXT,
-                    location TEXT,
-                    dismiss_reason TEXT,
-                    is_reposted BOOLEAN DEFAULT 0,
-                    listed_at TEXT,
-                    dismissed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Schema Migration: Add columns if they don't exist
-            # Check for is_reposted
-            try:
-                self.cursor.execute('SELECT is_reposted FROM dismissed_jobs LIMIT 1')
-            except sqlite3.OperationalError:
-                print("⚠️  Migrating DB: Adding 'is_reposted' column...")
-                self.cursor.execute('ALTER TABLE dismissed_jobs ADD COLUMN is_reposted BOOLEAN DEFAULT 0')
-                
-            # Check for listed_at
-            try:
-                self.cursor.execute('SELECT listed_at FROM dismissed_jobs LIMIT 1')
-            except sqlite3.OperationalError:
-                print("⚠️  Migrating DB: Adding 'listed_at' column...")
-                self.cursor.execute('ALTER TABLE dismissed_jobs ADD COLUMN listed_at TEXT')
-            
-            # Create Geo Cache Table
-            self.cursor.execute('''
-                CREATE TABLE IF NOT EXISTS geo_cache (
-                    location_query TEXT PRIMARY KEY,
-                    master_geo_id TEXT,
-                    populated_place_id TEXT,
-                    place_name TEXT,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-
-            # Create Geo Candidates Table
-            self.cursor.execute('''
-                CREATE TABLE IF NOT EXISTS geo_candidates (
-                    master_geo_id TEXT,
-                    pp_id TEXT,
-                    pp_name TEXT,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (master_geo_id, pp_id)
-                )
-            ''')
-            
-            self.conn.commit()
-            print("🗄️  Database initialized: dismissed_jobs.db")
-        except Exception as e:
-            print(f"❌ Database error: {e}")
-            sys.exit(1)
+        """Initialize connection to Supabase (handled by singleton)."""
+        # No local DB initialization needed for Supabase
+        pass
 
     def is_job_dismissed(self, job_id):
         """Check if job is already in the database."""
-        try:
-            self.cursor.execute('SELECT 1 FROM dismissed_jobs WHERE job_id = ?', (job_id,))
-            return self.cursor.fetchone() is not None
-        except Exception as e:
-            print(f"⚠️  Database check error: {e}")
-            return False
+        return db.is_job_dismissed(job_id)
 
     def save_dismissed_job(self, job_id, title, company, location, reason, job_url, company_url, is_reposted=False, listed_at=None):
         """Save dismissed job to database."""
-        try:
-            self.cursor.execute('''
-                INSERT OR IGNORE INTO dismissed_jobs 
-                (job_id, job_url, title, company, company_linkedin, location, dismiss_reason, is_reposted, listed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (job_id, job_url, title, company, company_url, location, reason, is_reposted, listed_at))
-            self.conn.commit()
-            print(f"   💾 Saved to DB: {title}")
-        except Exception as e:
-            print(f"   ⚠️ Error saving to DB: {e}")
+        db.save_dismissed_job(job_id, title, company, location, reason, job_url, company_url, is_reposted, listed_at)
             
     def delete_dismissed_job(self, job_id):
         """Remove a job from the dismissed jobs database."""
-        try:
-            self.cursor.execute('DELETE FROM dismissed_jobs WHERE job_id = ?', (job_id,))
-            self.conn.commit()
-            if self.cursor.rowcount > 0:
-                print(f"   🗑️  Removed from DB: Job ID {job_id}")
-                return True
-            else:
-                print(f"   ⚠️  Job ID {job_id} not found in DB.")
-                return False
-        except Exception as e:
-            print(f"   ⚠️ Error removing from DB: {e}")
-            return False
+        return db.delete_dismissed_job(job_id)
 
     def dismiss_job(self, job_id, title, company, location, dismiss_urn=None, reason=None, job_url=None, company_url=None, is_reposted=False, listed_at=None):
         """Dismiss a job using Voyager API and save to DB."""
@@ -348,24 +264,7 @@ class LinkedInScraper:
 
     def get_earliest_duplicate_job_id(self, title, company):
         """Find the earliest dismissed job with same title and company."""
-        try:
-            # We want the one with the earliest listed_at date. 
-            # If listed_at is NULL (old jobs), they might come first or last depending on DB.
-            # User said "earliest listed_at date".
-            # We'll order by listed_at ASC.
-            self.cursor.execute('''
-                SELECT job_id 
-                FROM dismissed_jobs 
-                WHERE title = ? AND company = ? 
-                ORDER BY listed_at ASC 
-                LIMIT 1
-            ''', (title, company))
-            result = self.cursor.fetchone()
-            if result:
-                return result[0]
-        except Exception as e:
-            print(f"   ⚠️ Error checking DB for duplicates: {e}")
-        return None
+        return db.get_earliest_duplicate(title, company)
 
     def log_info(self, info: str):
         """Log info messages to file."""
@@ -410,15 +309,7 @@ class LinkedInScraper:
                                     
                 if candidates:
                     # Save candidates to DB
-                    for cand in candidates:
-                        try:
-                            self.cursor.execute('''
-                                INSERT OR REPLACE INTO geo_candidates (master_geo_id, pp_id, pp_name)
-                                VALUES (?, ?, ?)
-                            ''', (geo_id, cand['id'], cand['name']))
-                        except Exception as e:
-                            print(f"   ⚠️ Error saving candidate {cand['name']}: {e}")
-                    self.conn.commit()
+                    db.save_geo_candidates(geo_id, candidates)
 
                 return candidates
             else:
@@ -432,19 +323,11 @@ class LinkedInScraper:
         print(f"   🔍 Refine: Fetching populated places for GeoID {master_geo_id}...")
         
         # Check geo_candidates cache first
-        cached_candidates = []
-        try:
-            self.cursor.execute('SELECT pp_id, pp_name FROM geo_candidates WHERE master_geo_id = ?', (master_geo_id,))
-            for row in self.cursor.fetchall():
-                cached_candidates.append({'id': row[0], 'name': row[1]})
-            if cached_candidates:
-                print(f"   📍 Geo Candidates cache hit for {master_geo_id}")
-                candidates = cached_candidates
-            else:
-                candidates = self.get_filter_clusters(master_geo_id)
-        except Exception as e:
-            print(f"   ⚠️ Geo Candidates cache read error: {e}")
-            candidates = self.get_filter_clusters(master_geo_id) # Fallback to API call
+        candidates = db.get_geo_candidates(master_geo_id)
+        if candidates:
+             print(f"   📍 Geo Candidates cache hit for {master_geo_id}")
+        else:
+             candidates = self.get_filter_clusters(master_geo_id) # Fallback to API call
 
         if not candidates:
             print("   ⚠️ No populated places found. Using Master GeoID.")
@@ -479,12 +362,7 @@ class LinkedInScraper:
             print(f"   ✅ Refined to: {best_match['name']} ({best_match['id']})")
             query = location_name.strip().title() # Use title for consistency
             try:
-                self.cursor.execute('''
-                    UPDATE geo_cache 
-                    SET populated_place_id = ?, place_name = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE location_query = ?
-                ''', (best_match['id'], best_match['name'], query))
-                self.conn.commit()
+                db.update_geo_cache_override(location_name.strip().title(), best_match['id'], best_match['name'])
             except Exception as e:
                 print(f"   ⚠️ Cache update error during refinement: {e}")
             return best_match['id'], True
@@ -500,17 +378,15 @@ class LinkedInScraper:
         query = location_name.strip().title() # Use title for consistency
         
         # Check cache
-        try:
-            self.cursor.execute('SELECT master_geo_id, populated_place_id, place_name FROM geo_cache WHERE location_query = ?', (query,))
-            row = self.cursor.fetchone()
-            if row:
-                master_id, pp_id, name = row
-                final_id = pp_id if pp_id else master_id
-                is_refined = pp_id is not None
-                print(f"   📍 Cache hit: {location_name} -> {name} (ID: {final_id}) {'[REFINED]' if is_refined else ''}")
-                return final_id, is_refined
-        except Exception as e:
-            print(f"   ⚠️ Cache read error: {e}")
+        row = db.get_geo_cache(query)
+        if row:
+            master_id = row.get('master_geo_id')
+            pp_id = row.get('populated_place_id')
+            name = row.get('place_name')
+            final_id = pp_id if pp_id else master_id
+            is_refined = pp_id is not None
+            print(f"   📍 Cache hit: {location_name} -> {name} (ID: {final_id}) {'[REFINED]' if is_refined else ''}")
+            return final_id, is_refined
 
         print(f"📍 Resolving location: {location_name}...")
         
@@ -554,11 +430,7 @@ class LinkedInScraper:
         
         # 4. Save to Cache
         try:
-            self.cursor.execute('''
-                INSERT OR REPLACE INTO geo_cache (location_query, master_geo_id, populated_place_id, place_name)
-                VALUES (?, ?, ?, ?)
-            ''', (location_name.lower(), master_geo_id, pp_id, place_name))
-            self.conn.commit()
+            db.save_geo_cache(location_name, master_geo_id, pp_id, place_name)
         except Exception as e:
             print(f"   ⚠️ Cache write error: {e}")
             
