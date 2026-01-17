@@ -526,8 +526,8 @@ class LinkedInScraper:
             
 
             
-            # Updated decorationId as per user observation
-            decoration_id = "com.linkedin.voyager.dash.deco.jobs.search.JobSearchCardsCollectionLite-88"
+            # Updated decorationId to be more comprehensive (non-lite) to get footerItems and listed_at
+            decoration_id = "com.linkedin.voyager.dash.deco.jobs.search.JobSearchCardsCollection-76"
             q_param = "jobSearch"
             
             full_url = f"{VOYAGER_API_URL}?decorationId={decoration_id}&count={count}&q={q_param}&query={query_string}&servedEventEnabled=false&start={start}"
@@ -550,6 +550,7 @@ class LinkedInScraper:
                 # Debug: Save response - SKIPPED FOR VERCEL
                 # debug_file = f"debug/voyager_jobs_start_{start}.json"
                 # try:
+                #     os.makedirs("debug", exist_ok=True)
                 #     with open(debug_file, "w", encoding='utf-8') as f:
                 #         json.dump(data, f, indent=2)
                 # except Exception: pass
@@ -612,13 +613,18 @@ class LinkedInScraper:
                     
                     # Fallback 1: Check direct posting data (often contains accurate timestamps)
                     if posting_data:
-                        ts_ms = posting_data.get('listedAt') or posting_data.get('createdAt') or posting_data.get('firstListedAt')
+                        # Common fields in JobPosting object
+                        ts_ms = (posting_data.get('listedAt') or 
+                                 posting_data.get('createdAt') or 
+                                 posting_data.get('firstListedAt') or
+                                 posting_data.get('listedAtTimestamp'))
                         if ts_ms:
                             try:
                                 dt = datetime.fromtimestamp(ts_ms / 1000)
                                 listed_at = dt.strftime('%Y-%m-%d %H:%M:%S')
                             except Exception: pass
 
+                    # Fallback 2: Robust Footer Check
                     footer_items = card.get('footerItems', [])
                     for item in footer_items:
                         item_type = str(item.get('type', ''))
@@ -629,7 +635,6 @@ class LinkedInScraper:
                             if 'early applicant' in text:
                                 is_early_applicant = True
                         elif 'DATE' in item_type or 'TIME' in item_type:
-                            # timeAt: 1768048639000 (ms)
                             ts_ms = item.get('timeAt') or item.get('listedAt')
                             if ts_ms and not listed_at:
                                 try:
@@ -637,14 +642,40 @@ class LinkedInScraper:
                                     listed_at = dt.strftime('%Y-%m-%d %H:%M:%S')
                                 except Exception: pass
                     
-                    # Final fallback: If still None, check for any time-like fields in the card itself
+                    # Fallback 3: Aggressive deep search for 13-digit timestamps in the card
                     if not listed_at:
-                         ts_ms = card.get('listedAt') or card.get('timeAt')
+                        def find_ts(obj):
+                            if isinstance(obj, dict):
+                                for k, v in obj.items():
+                                    if isinstance(v, (int, float)) and 10**12 < v < 2*10**12: # 13-digit ms TS
+                                        return v
+                                    res = find_ts(v)
+                                    if res: return res
+                            elif isinstance(obj, list):
+                                for item in obj:
+                                    res = find_ts(item)
+                                    if res: return res
+                            return None
+                        
+                        deep_ts = find_ts(card)
+                        if deep_ts:
+                            try:
+                                dt = datetime.fromtimestamp(deep_ts / 1000)
+                                listed_at = dt.strftime('%Y-%m-%d %H:%M:%S')
+                            except Exception: pass
+                    
+                    if not listed_at:
+                         # Final attempt: Look into Relevance Insight
+                         ts_ms = card.get('relevanceInsight', {}).get('timeAt')
                          if ts_ms:
                              try:
                                  dt = datetime.fromtimestamp(ts_ms / 1000)
                                  listed_at = dt.strftime('%Y-%m-%d %H:%M:%S')
                              except Exception: pass
+
+                    # Debug log (only if NULL to avoid spam)
+                    if not listed_at:
+                        print(f"   ⚠️  Could not find listing date for '{title}'. (Posting keys: {list(posting_data.keys()) if posting_data else 'N/A'}, Card keys: {list(card.keys())})")
                     
                     # Check Actively Reviewing Status
                     is_actively_reviewing = False
