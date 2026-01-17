@@ -9,3 +9,4 @@ pydantic==2.12.4
 pydantic-settings==2.9.1
 pydantic_core==2.41.5
 uvicorn==0.35.0
+supabase==2.3.0
