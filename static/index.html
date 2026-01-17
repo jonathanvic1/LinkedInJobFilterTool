@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Scraper Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* Terminal Effect */
+        .terminal {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            background-color: #0f172a;
+            color: #10b981;
+            text-shadow: 0 0 2px rgba(16, 185, 129, 0.2);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-gray-100 h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-gray-800 border-r border-gray-700 flex flex-col flex-shrink-0">
+        <div class="p-6 border-b border-gray-700 px-8">
+            <h1
+                class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 tracking-tight">
+                Job Filter
+            </h1>
+            <p class="text-xs text-gray-400 mt-1 font-medium">LinkedIn Automation</p>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="switchTab('scraper')"
+                class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 flex items-center space-x-3 bg-gray-700 text-white shadow-md shadow-gray-900/20"
+                id="btn-scraper">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <span class="font-medium">Search & Filter</span>
+            </button>
+            <button onclick="switchTab('history')"
+                class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 flex items-center space-x-3 text-gray-400"
+                id="btn-history">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="font-medium">History</span>
+            </button>
+            <span class="font-medium">Blocklists</span>
+            </button>
+            <button onclick="switchTab('locations')"
+                class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 flex items-center space-x-3 text-gray-400"
+                id="btn-locations">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <span class="font-medium">Locations</span>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-gray-700">
+            <div id="status-indicator" class="flex items-center space-x-2 text-sm text-gray-400 px-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-gray-600 transition-colors duration-300" id="status-dot"></div>
+                <span id="status-text" class="font-medium">Idle</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-hidden relative bg-gray-900">
+
+        <!-- Scraper Tab -->
+        <div id="scraper" class="tab-content flex flex-col h-full">
+            <!-- Header -->
+            <header
+                class="bg-gray-800 border-b border-gray-700 px-8 py-5 flex justify-between items-center shadow-sm z-10">
+                <div>
+                    <h2 class="text-xl font-bold text-white">New Search</h2>
+                    <p class="text-sm text-gray-400 mt-0.5">Configure your parameters to find relevant jobs.</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button onclick="startScraper()" id="start-btn"
+                        class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-all transform active:scale-95 shadow-lg shadow-blue-500/20 flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Start Filtering</span>
+                    </button>
+                    <button onclick="stopScraper()" id="stop-btn"
+                        class="px-6 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium transition-all transform active:scale-95 shadow-lg shadow-red-500/20 hidden flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                        </svg>
+                        <span>Stop</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-8 space-y-6">
+
+                <!-- Configuration Cards -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Keywords & Location (Main Inputs) -->
+                    <div class="lg:col-span-8 space-y-6">
+                        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label
+                                        class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Keywords</label>
+                                    <input type="text" id="keywords"
+                                        class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                        placeholder="e.g. Software Engineer">
+                                </div>
+                                <div>
+                                    <label
+                                        class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Location</label>
+                                    <input type="text" id="location" value="Canada"
+                                        class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                        placeholder="e.g. Toronto, Canada">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filters Config -->
+                        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg">
+                            <h3 class="text-sm font-semibold text-gray-300 mb-4 flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4">
+                                    </path>
+                                </svg>
+                                Advanced Filters
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Time Range</label>
+                                        <div class="relative">
+                                            <select id="time_range"
+                                                class="w-full bg-gray-900 border border-gray-600 rounded-lg pl-3 pr-10 py-2.5 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option value="all">Any Time</option>
+                                                <option value="24h" selected>Past 24 Hours</option>
+                                                <option value="week">Past Week</option>
+                                                <option value="month">Past Month</option>
+                                            </select>
+                                            <div
+                                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg"
+                                                    viewBox="0 0 20 20">
+                                                    <path
+                                                        d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Result Limit (Max
+                                            Jobs)</label>
+                                        <input type="number" id="limit" value="25"
+                                            class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                </div>
+
+                                <div class="mt-4">
+                                    <label class="block text-xs font-medium text-gray-400 mb-2">Workplace Type</label>
+                                    <div class="flex flex-col space-y-2">
+                                        <label class="flex items-center space-x-3 cursor-pointer group">
+                                            <div class="relative flex items-center">
+                                                <input type="checkbox" id="wp_onsite" value="1"
+                                                    class="peer form-checkbox h-4 w-4 text-blue-600 rounded bg-gray-800 border-gray-600 focus:ring-blue-500 focus:ring-offset-gray-900 transition-all">
+                                            </div>
+                                            <span
+                                                class="text-sm text-gray-300 group-hover:text-white transition-colors">On-site</span>
+                                        </label>
+                                        <label class="flex items-center space-x-3 cursor-pointer group">
+                                            <div class="relative flex items-center">
+                                                <input type="checkbox" id="wp_hybrid" value="3"
+                                                    class="peer form-checkbox h-4 w-4 text-blue-600 rounded bg-gray-800 border-gray-600 focus:ring-blue-500 focus:ring-offset-gray-900 transition-all">
+                                            </div>
+                                            <span
+                                                class="text-sm text-gray-300 group-hover:text-white transition-colors">Hybrid</span>
+                                        </label>
+                                        <label class="flex items-center space-x-3 cursor-pointer group">
+                                            <div class="relative flex items-center">
+                                                <input type="checkbox" id="wp_remote" value="2"
+                                                    class="peer form-checkbox h-4 w-4 text-purple-500 rounded bg-gray-800 border-gray-600 focus:ring-purple-500 focus:ring-offset-gray-900 transition-all">
+                                            </div>
+                                            <span
+                                                class="text-sm text-gray-300 group-hover:text-white transition-colors">Remote</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div
+                                class="bg-gray-900/50 rounded-lg p-5 space-y-5 border border-gray-700/50 mt-10 shadow-inner">
+                                <label class="flex items-center space-x-3 cursor-pointer group">
+                                    <div class="relative flex items-center">
+                                        <input type="checkbox" id="easy_apply"
+                                            class="peer form-checkbox h-5 w-5 text-blue-600 rounded bg-gray-800 border-gray-600 focus:ring-blue-500 focus:ring-offset-gray-900 transition-all">
+                                    </div>
+                                    <span class="text-sm text-gray-300 group-hover:text-white transition-colors">Easy
+                                        Apply Only</span>
+                                </label>
+
+                                <label class="flex items-center space-x-3 cursor-pointer group">
+                                    <div class="relative flex items-center">
+                                        <input type="checkbox" id="relevant"
+                                            class="peer form-checkbox h-5 w-5 text-blue-600 rounded bg-gray-800 border-gray-600 focus:ring-blue-500 focus:ring-offset-gray-900 transition-all">
+                                    </div>
+                                    <span class="text-sm text-gray-300 group-hover:text-white transition-colors">Sort
+                                        by Most Relevant</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Terminal/Activity Log -->
+                <div class="lg:col-span-4 flex flex-col h-full h-[500px]">
+                    <div
+                        class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl flex flex-col h-full overflow-hidden">
+                        <div class="bg-gray-900 px-4 py-3 border-b border-gray-700 flex justify-between items-center">
+                            <span class="text-xs font-bold font-mono text-gray-400 tracking-wider">ACTIVITY
+                                LOG</span>
+                            <div class="flex space-x-1.5">
+                                <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+                                <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+                            </div>
+                        </div>
+                        <div id="logs"
+                            class="p-4 overflow-y-auto terminal flex-1 font-mono text-xs space-y-1.5 leading-relaxed bg-gray-900/90 scroll-smooth">
+                            <div class="text-gray-500 italic">Waiting for command...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="history" class="tab-content hidden h-full flex-col">
+            <header class="bg-gray-800 border-b border-gray-700 p-6 flex justify-between items-center">
+                <h2 class="text-xl font-semibold">Dismissal History</h2>
+                <button onclick="loadHistory()" class="text-blue-400 hover:text-blue-300 text-sm">Refresh</button>
+            </header>
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-900 text-gray-400 uppercase font-medium">
+                            <tr>
+                                <th class="px-6 py-4">Job Title</th>
+                                <th class="px-6 py-4">Company</th>
+                                <th class="px-6 py-4">Reason</th>
+                                <th class="px-6 py-4">Date</th>
+                                <th class="px-6 py-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-gray-700">
+                            <!-- Rows injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blocklists Tab -->
+        <div id="blocklists" class="tab-content hidden h-full flex-col">
+            <header class="bg-gray-800 border-b border-gray-700 p-6">
+                <h2 class="text-xl font-semibold">Manage Blocklists</h2>
+            </header>
+            <div class="flex-1 overflow-y-auto p-6 grid grid-cols-2 gap-6">
+                <div
+                    class="flex flex-col h-full bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden">
+                    <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900">
+                        <h3 class="font-medium text-gray-300">Blocked Job Titles</h3>
+                        <button onclick="saveBlocklist('blocklist.txt')"
+                            class="text-xs px-3 py-1 bg-blue-600 rounded text-white hover:bg-blue-500">Save</button>
+                    </div>
+                    <textarea id="blocklist-titles"
+                        class="flex-1 bg-gray-900 p-4 text-sm font-mono text-gray-300 focus:outline-none resize-none"
+                        placeholder="Enter keywords to block..."></textarea>
+                </div>
+
+                <div
+                    class="flex flex-col h-full bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden">
+                    <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900">
+                        <h3 class="font-medium text-gray-300">Blocked Companies</h3>
+                        <button onclick="saveBlocklist('blocklist_companies.txt')"
+                            class="text-xs px-3 py-1 bg-blue-600 rounded text-white hover:bg-blue-500">Save</button>
+                    </div>
+                    <textarea id="blocklist-companies"
+                        class="flex-1 bg-gray-900 p-4 text-sm font-mono text-gray-300 focus:outline-none resize-none"
+                        placeholder="Enter company URLs or names..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Locations Tab -->
+        <div id="locations" class="tab-content hidden h-full flex-col">
+            <header class="bg-gray-800 border-b border-gray-700 p-6 flex justify-between items-center">
+                <h2 class="text-xl font-semibold">Location Cache Management</h2>
+                <button onclick="loadGeoCache()" class="text-blue-400 hover:text-blue-300 text-sm">Refresh
+                    Cache</button>
+            </header>
+            <div class="flex-1 overflow-y-auto p-6 space-y-10">
+                <!-- Master GeoID Cache -->
+                <section>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-2 h-6 bg-blue-500 rounded-full"></div>
+                        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-widest">Master GeoID Cache</h3>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-900 text-gray-400 uppercase font-bold text-xs">
+                                <tr>
+                                    <th class="px-6 py-4">Query</th>
+                                    <th class="px-6 py-4">Master GeoID</th>
+                                    <th class="px-6 py-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="master-geo-table-body" class="divide-y divide-gray-700">
+                                <!-- Rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Populated Place Cache -->
+                <section>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-2 h-6 bg-green-500 rounded-full"></div>
+                        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-widest">Populated Place Cache</h3>
+                    </div>
+                    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-900 text-gray-400 uppercase font-bold text-xs">
+                                <tr>
+                                    <th class="px-6 py-4">Query</th>
+                                    <th class="px-6 py-4">Master GeoID</th>
+                                    <th class="px-6 py-4">Populated Place ID</th>
+                                    <th class="px-6 py-4">Place Name</th>
+                                    <th class="px-6 py-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pp-cache-table-body" class="divide-y divide-gray-700">
+                                <!-- Rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Geo Correction Modal -->
+    <div id="modal-geo-correction"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div
+            class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh]">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                <div>
+                    <h3 class="text-xl font-bold text-white">Correct Location Mapping</h3>
+                    <p id="correction-query" class="text-xs font-mono text-blue-400 mt-1 uppercase"></p>
+                </div>
+                <button onclick="closeGeoModal()" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6">
+                <p class="text-sm text-gray-400 mb-4">Select the correct populated place from the candidates found by
+                    LinkedIn:</p>
+                <div id="geo-candidates-list" class="space-y-2">
+                    <!-- Candidates injected here -->
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-700 flex justify-end">
+                <button onclick="closeGeoModal()"
+                    class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+
+</html>

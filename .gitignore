@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+dismissed_jobs.db
+userCookie.txt
+.env
+logs/
+debug/
+.DS_Store
+venv/
+*.db
