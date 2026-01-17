@@ -232,9 +232,13 @@ def save_blocklist(update: BlocklistUpdate):
     if update.filename not in ["blocklist.txt", "blocklist_companies.txt"]:
         raise HTTPException(status_code=400, detail="Invalid filename")
         
-    with open(update.filename, "w") as f:
-        f.write(update.content)
-    return {"status": "saved"}
+    try:
+        with open(update.filename, "w") as f:
+            f.write(update.content)
+        return {"status": "saved"}
+    except OSError:
+        # This will happen on Vercel
+        return {"status": "error", "detail": "Cannot save blocklist on read-only system (Vercel)."}
 
 @app.get("/api/history")
 def get_history(limit: int = 100):

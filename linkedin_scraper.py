@@ -75,8 +75,8 @@ class LinkedInScraper:
         self.time_filter = time_filter
         self.workplace_type = workplace_type if workplace_type else []
         
-        # Create logs directory if it doesn't exist
-        os.makedirs('logs', exist_ok=True)
+        # Create logs directory if it doesn't exist - SKIPPED FOR VERCEL
+        # os.makedirs('logs', exist_ok=True)
         
         # Initialize DB
         self.init_db()
@@ -127,9 +127,10 @@ class LinkedInScraper:
                 print(f"🔑 CSRF Token loaded from {'Environment Variable' if os.environ.get('LINKEDIN_COOKIES') else 'File'}")
 
     def log_error(self, error: str):
-        """Log error messages to file."""
-        with open("logs/error.log", "a", encoding='utf-8') as f:
-            f.write(f"{datetime.now()} ERROR {error}\n")
+        """Log error messages to console (Vercel safe)."""
+        print(f"[{datetime.now()}] ERROR {error}")
+        # with open("logs/error.log", "a", encoding='utf-8') as f:
+        #     f.write(f"{datetime.now()} ERROR {error}\n")
     
     def init_db(self):
         """Initialize connection to Supabase (handled by singleton)."""
@@ -272,9 +273,10 @@ class LinkedInScraper:
         return db.get_earliest_duplicate(title, company)
 
     def log_info(self, info: str):
-        """Log info messages to file."""
-        with open("logs/info.log", "a", encoding='utf-8') as f:
-            f.write(f"{datetime.now()} INFO {info}\n")
+        """Log info messages to console (Vercel safe)."""
+        print(f"[{datetime.now()}] INFO {info}")
+        # with open("logs/info.log", "a", encoding='utf-8') as f:
+        #     f.write(f"{datetime.now()} INFO {info}\n")
             
     def get_filter_clusters(self, geo_id):
         """Fetch secondary filter clusters (populatedPlace) for a given Master GeoID."""
@@ -545,12 +547,12 @@ class LinkedInScraper:
                     
                 data = response.json()
                 
-                # Debug: Save response
-                debug_file = f"debug/voyager_jobs_start_{start}.json"
-                try:
-                    with open(debug_file, "w", encoding='utf-8') as f:
-                        json.dump(data, f, indent=2)
-                except Exception: pass
+                # Debug: Save response - SKIPPED FOR VERCEL
+                # debug_file = f"debug/voyager_jobs_start_{start}.json"
+                # try:
+                #     with open(debug_file, "w", encoding='utf-8') as f:
+                #         json.dump(data, f, indent=2)
+                # except Exception: pass
                 
                 # Print Total Jobs on first page
                 if start == 0:
