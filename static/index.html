@@ -278,7 +278,10 @@
         <div id="history" class="tab-content hidden h-full flex-col">
             <header class="bg-gray-800 border-b border-gray-700 p-6 flex justify-between items-center">
                 <h2 class="text-xl font-semibold">Dismissal History</h2>
-                <button onclick="loadHistory()" class="text-blue-400 hover:text-blue-300 text-sm">Refresh</button>
+                <div class="flex items-center space-x-4">
+                    <div id="history-pagination" class="flex items-center"></div>
+                    <button onclick="loadHistory(0)" class="text-blue-400 hover:text-blue-300 text-sm">Refresh</button>
+                </div>
             </header>
             <div class="flex-1 overflow-y-auto p-6">
                 <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">

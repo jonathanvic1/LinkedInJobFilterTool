@@ -1,6 +1,8 @@
 // State
 let isRunning = false;
 let logInterval = null;
+let historyOffset = 0;
+let historyLimit = 50;
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
@@ -192,10 +194,13 @@ async function saveBlocklist(filename) {
 }
 
 // History
-async function loadHistory() {
+async function loadHistory(offset = 0) {
+    historyOffset = offset;
     try {
-        const res = await fetch('/api/history?limit=50');
-        const history = await res.json();
+        const res = await fetch(`/api/history?limit=${historyLimit}&offset=${historyOffset}`);
+        const data = await res.json();
+        const history = data.items;
+        const total = data.total;
 
         const tbody = document.getElementById('history-table-body');
         tbody.innerHTML = history.map(row => `
@@ -205,12 +210,35 @@ async function loadHistory() {
                 <td class="px-6 py-4 text-xs">
                     <span class="px-2 py-1 rounded bg-red-900 text-red-200">${escapeHtml(formatReason(row.reason))}</span>
                 </td>
-                <td class="px-6 py-4 text-gray-500 text-xs">${row.date}</td>
+                <td class="px-6 py-4 text-gray-500 text-xs">${new Date(row.date).toLocaleString()}</td>
                 <td class="px-6 py-4">
                     <a href="${row.url}" target="_blank" class="text-blue-400 hover:text-blue-300 hover:underline text-xs">View Job</a>
                 </td>
             </tr>
         `).join('');
+
+        // Pagination Controls
+        const paginationContainer = document.getElementById('history-pagination');
+        if (paginationContainer) {
+            const hasNext = (historyOffset + historyLimit) < total;
+            const hasPrev = historyOffset > 0;
+
+            paginationContainer.innerHTML = `
+                <span class="text-sm text-gray-400 mr-4">
+                    Showing ${historyOffset + 1}-${Math.min(historyOffset + historyLimit, total)} of ${total}
+                </span>
+                <div class="flex space-x-2">
+                    <button onclick="loadHistory(${historyOffset - historyLimit})" ${!hasPrev ? 'disabled' : ''} 
+                        class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed text-white">
+                        Previous
+                    </button>
+                    <button onclick="loadHistory(${historyOffset + historyLimit})" ${!hasNext ? 'disabled' : ''} 
+                        class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed text-white">
+                        Next
+                    </button>
+                </div>
+            `;
+        }
 
     } catch (e) { console.error(e); }
 }

@@ -241,8 +241,15 @@ def save_blocklist(update: BlocklistUpdate):
         return {"status": "error", "detail": "Cannot save blocklist on read-only system (Vercel)."}
 
 @app.get("/api/history")
-def get_history(limit: int = 100):
-    return db.get_history(limit)
+def get_history(limit: int = 50, offset: int = 0):
+    data = db.get_history(limit, offset)
+    total = db.get_history_count()
+    return {
+        "items": data,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
 
 @app.get("/api/geo_cache")
 def get_geo_cache():

@@ -144,13 +144,14 @@ class Database:
              print(f"   ⚠️ DB Error (get_earliest_duplicate): {e}")
         return None
 
-    def get_history(self, limit=100):
+    def get_history(self, limit=50, offset=0):
         if not self.client: return []
         try:
             response = self.client.table("dismissed_jobs")\
                 .select("*")\
                 .order("dismissed_at", desc=True)\
-                .limit(limit)\
+                .order("dismissed_at", desc=True)\
+                .range(offset, offset + limit - 1)\
                 .execute()
             
             # Map back to API format
@@ -168,7 +169,17 @@ class Database:
             return history
         except Exception as e:
             print(f"DB Error (history): {e}")
+            print(f"DB Error (history): {e}")
             return []
+
+    def get_history_count(self):
+        if not self.client: return 0
+        try:
+            response = self.client.table("dismissed_jobs").select("*", count="exact", head=True).execute()
+            return response.count
+        except Exception as e:
+            print(f"DB Error (history count): {e}")
+            return 0
 
     def get_all_geo_cache(self):
         if not self.client: return []
