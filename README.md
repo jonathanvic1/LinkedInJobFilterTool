@@ -1,17 +1,17 @@
-# LinkedIn Job Scraper
+# Linkedin Job Filter
 
-A Python script to scrape job postings from LinkedIn based on various search criteria.
+A robust Python-based tool designed to filter and manage job postings availability from LinkedIn. It provides a filtering mechanism to hide irrelevant jobs and focus on opportunities that match your specific criteria.
 
 ## Features
 
-- 🔍 Search jobs by keywords, location, and other filters
-- ⏰ Filter by posting time (24h, 1 week, 1 month)
-- 💼 Filter by job type (Full-time, Part-time, Contract, etc.)
-- 🏠 Filter by work location (On-site, Remote, Hybrid)
-- 📊 Export results to CSV
-- 🛡️ Rate limiting to avoid being blocked
-- 📝 Comprehensive logging
-- 🎯 Command-line interface with arguments
+- 🔍 **Smart Filtering**: Dismiss irrelevant jobs and keep your feed clean
+- 🚫 **Blocklists**: Automatically filter out specific companies or job titles
+- 📍 **Location Intelligence**: Refine searches to specific populated places
+- 💾 **Local Database**: Persist dismissed jobs and preferences
+- 📊 **Export**: Export filtered results to CSV
+- 🛡️ **Stealth**: Uses browser impersonation (curl_cffi) to avoid detection
+- 📝 **Logging**: detailed logs for debugging
+- 🎯 **API & Web UI**: FastAPI backend with a clean interface
 
 ## Installation
 
