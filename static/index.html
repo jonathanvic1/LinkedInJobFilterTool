@@ -6,7 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LinkedIn Scraper Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/auth.js"></script>
+    <script>
+        // Immediate Auth Check
+        (async () => {
+            const user = await authClient.getCurrentUser();
+            if (!user) window.location.href = '/login.html';
+        })();
+    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -71,7 +80,15 @@
                 </svg>
                 <span class="font-medium">History</span>
             </button>
-            <span class="font-medium">Blocklists</span>
+            <button onclick="switchTab('blocklists')"
+                class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 flex items-center space-x-3 text-gray-400"
+                id="btn-blocklists">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636">
+                    </path>
+                </svg>
+                <span class="font-medium">Blocklists</span>
             </button>
             <button onclick="switchTab('locations')"
                 class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-700 transition-all duration-200 flex items-center space-x-3 text-gray-400"
@@ -84,6 +101,18 @@
                 </svg>
                 <span class="font-medium">Locations</span>
             </button>
+
+            <!-- Logout -->
+            <div class="pt-4 mt-4 border-t border-gray-700/50">
+                <button onclick="authClient.signOut()"
+                    class="w-full flex items-center px-4 py-3 text-red-500 hover:bg-red-900/10 rounded-lg transition-colors group">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span class="font-medium text-sm">Logout</span>
+                </button>
+            </div>
         </nav>
 
         <div class="p-4 border-t border-gray-700">
