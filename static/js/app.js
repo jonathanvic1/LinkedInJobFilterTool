@@ -11,12 +11,13 @@ function showToast(message, isError = false) {
 
     const toast = document.createElement('div');
     toast.id = 'toast-notification';
-    toast.className = `fixed bottom-6 right-6 px-5 py-3 rounded-lg shadow-xl text-sm font-medium z-50 transition-all transform translate-y-0 opacity-100 ${isError ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`;
+    toast.className = `fixed bottom-6 right-6 px-5 py-3 rounded-lg shadow-xl text-sm font-medium z-50 transition-all duration-300 transform translate-y-0 opacity-100 ${isError ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`;
     toast.textContent = message;
     document.body.appendChild(toast);
 
     setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-y-2');
+        toast.classList.replace('translate-y-0', 'translate-y-4');
+        toast.classList.replace('opacity-100', 'opacity-0');
         setTimeout(() => toast.remove(), 300);
     }, 1500);
 }
@@ -96,7 +97,12 @@ async function loadConfig() {
         const tr = document.getElementById('time_range');
         if (config.time_range) {
             // simplified mapping attempt
-            if (config.time_range.includes('86400')) tr.value = '24h';
+            if (config.time_range.includes('1800')) tr.value = '30m';
+            else if (config.time_range.includes('3600')) tr.value = '1h';
+            else if (config.time_range.includes('28800')) tr.value = '8h';
+            else if (config.time_range.includes('86400')) tr.value = '24h';
+            else if (config.time_range.includes('172800')) tr.value = '2d';
+            else if (config.time_range.includes('259200')) tr.value = '3d';
             else if (config.time_range.includes('604800')) tr.value = 'week';
             else if (config.time_range.includes('2592000')) tr.value = 'month';
             else tr.value = 'all';

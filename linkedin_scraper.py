@@ -465,8 +465,18 @@ class LinkedInScraper:
         # r604800 = 1 week
         # r2592000 = 1 month
         time_range = None
-        if self.time_filter == '24h':
+        if self.time_filter == '30m':
+            time_range = "r1800"
+        elif self.time_filter == '1h':
+            time_range = "r3600"
+        elif self.time_filter == '8h':
+            time_range = "r28800"
+        elif self.time_filter == '24h':
             time_range = "r86400"
+        elif self.time_filter == '2d':
+            time_range = "r172800"
+        elif self.time_filter == '3d':
+            time_range = "r259200"
         elif self.time_filter == 'week':
             time_range = "r604800"
         elif self.time_filter == 'month':
