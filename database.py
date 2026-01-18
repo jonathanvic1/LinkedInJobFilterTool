@@ -163,7 +163,8 @@ class Database:
                     "company": row.get('company'),
                     "location": row.get('location'),
                     "reason": row.get('dismiss_reason'),
-                    "date": row.get('dismissed_at')
+                    "dismissed_at": row.get('dismissed_at'),
+                    "listed_at": row.get('listed_at')
                 })
             return history
         except Exception as e:
