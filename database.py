@@ -205,7 +205,7 @@ class Database:
             raise e
 
     def get_blocklist(self, name):
-        """Fetch blocklist items by name ('job_titles' or 'companies')"""
+        """Fetch blocklist items by name ('job_title' or 'company_linkedin')"""
         if not self.client: return []
         try:
             res = self.client.table("blocklists").select("item").eq("name", name).execute()

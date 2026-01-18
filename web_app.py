@@ -169,8 +169,8 @@ def run_scraper_thread(params: SearchParams):
     
     # Read blocklists from Supabase
     try:
-        block_titles = db.get_blocklist("job_titles")
-        block_companies = db.get_blocklist("companies")
+        block_titles = db.get_blocklist("job_title")
+        block_companies = db.get_blocklist("company_linkedin")
     except Exception as e:
         log_message(f"⚠️ Error reading blocklists from Supabase: {e}")
         block_titles = []
@@ -278,13 +278,13 @@ def get_config():
 
 @app.get("/api/blocklist")
 def get_blocklist(filename: str):
-    name = "job_titles" if filename == "blocklist.txt" else "companies"
+    name = "job_title" if filename == "blocklist.txt" else "company_linkedin"
     items = db.get_blocklist(name)
     return {"content": "\n".join(items)}
 
 @app.post("/api/blocklist")
 def save_blocklist(update: BlocklistUpdate):
-    name = "job_titles" if update.filename == "blocklist.txt" else "companies"
+    name = "job_title" if update.filename == "blocklist.txt" else "company_linkedin"
     items = update.content.split("\n")
     try:
         db.update_blocklist(name, items)

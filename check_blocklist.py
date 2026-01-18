@@ -41,5 +41,5 @@ def check_db_blocklist(name):
         print("   ✅ No whitespace issues found.")
 
 if __name__ == "__main__":
-    check_db_blocklist('job_titles')
-    check_db_blocklist('companies')
+    check_db_blocklist('job_title')
+    check_db_blocklist('company_linkedin')

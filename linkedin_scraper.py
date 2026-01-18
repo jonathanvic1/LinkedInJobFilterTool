@@ -908,8 +908,8 @@ def main():
     
     # Read from Supabase blocklists
     try:
-        dismiss_titles = db.get_blocklist("job_titles")
-        dismiss_companies = db.get_blocklist("companies")
+        dismiss_titles = db.get_blocklist("job_title")
+        dismiss_companies = db.get_blocklist("company_linkedin")
         if dismiss_titles:
             print(f"🚫 Loaded {len(dismiss_titles)} title keywords from Supabase")
         if dismiss_companies:
