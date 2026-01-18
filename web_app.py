@@ -37,7 +37,7 @@ app.add_middleware(
 # Public routes that don't need auth
 # We allow the frontend shell to load, JS will handle the UI-level redirect.
 # All sensitive data APIs remain strictly protected.
-PUBLIC_ROUTES = ["/api/auth/config", "/login.html", "/js/auth.js", "/favicon.ico", "/", "/index.html"]
+PUBLIC_ROUTES = ["/api/auth/config", "/login", "/login.html", "/js/auth.js", "/favicon.ico", "/", "/index.html"]
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -61,7 +61,7 @@ async def auth_middleware(request: Request, call_next):
         
         # For other page loads, redirect to login
         from fastapi.responses import RedirectResponse
-        return RedirectResponse(url="/login.html")
+        return RedirectResponse(url="/login")
 
     token = auth_header.split(" ")[1]
     
@@ -86,6 +86,15 @@ def get_auth_config():
                                              # but user is using search key as service role.
                                              # For frontend auth to work well, they need the Anon Key.
     }
+
+@app.get("/login", response_class=HTMLResponse)
+def get_login_page():
+    """Serve the login page at a pretty URL."""
+    try:
+        with open("static/login.html", "r") as f:
+            return f.read()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading login page: {str(e)}")
 
 # Global State
 class ScraperState:

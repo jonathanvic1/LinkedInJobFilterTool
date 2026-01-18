@@ -8,7 +8,7 @@ let historyLimit = 50;
 async function apiFetch(url, options = {}) {
     const token = await authClient.getSessionToken();
     if (!token && !url.includes('/api/auth/config')) {
-        window.location.href = '/login.html';
+        window.location.href = '/login';
         return;
     }
 
@@ -20,7 +20,7 @@ async function apiFetch(url, options = {}) {
     const res = await fetch(url, { ...options, headers });
 
     if (res.status === 401) {
-        window.location.href = '/login.html';
+        window.location.href = '/login';
         return;
     }
 

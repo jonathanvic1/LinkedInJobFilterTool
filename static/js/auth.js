@@ -38,7 +38,7 @@ class AuthClient {
     async signOut() {
         const client = await this.init();
         await client.auth.signOut();
-        window.location.href = '/login.html';
+        window.location.href = '/login';
     }
 
     async getCurrentUser() {
@@ -55,8 +55,8 @@ class AuthClient {
 
     async guard() {
         const user = await this.getCurrentUser();
-        if (!user && !window.location.pathname.endsWith('login.html')) {
-            window.location.href = '/login.html';
+        if (!user && !window.location.pathname.endsWith('/login')) {
+            window.location.href = '/login';
         }
     }
 }
