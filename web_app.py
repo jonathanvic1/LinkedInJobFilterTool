@@ -167,14 +167,12 @@ def run_scraper_thread(params: SearchParams):
     
     log_message("🚀 Starting Scraper Background Thread...")
     
-    # Read blocklists
+    # Read blocklists from Supabase
     try:
-        with open("blocklist.txt", "r") as f:
-            block_titles = [line.strip() for line in f if line.strip()]
-        with open("blocklist_companies.txt", "r") as f:
-            block_companies = [line.strip() for line in f if line.strip()]
+        block_titles = db.get_blocklist("job_titles")
+        block_companies = db.get_blocklist("companies")
     except Exception as e:
-        log_message(f"⚠️ Error reading blocklists: {e}")
+        log_message(f"⚠️ Error reading blocklists from Supabase: {e}")
         block_titles = []
         block_companies = []
 
@@ -280,27 +278,19 @@ def get_config():
 
 @app.get("/api/blocklist")
 def get_blocklist(filename: str):
-    if filename not in ["blocklist.txt", "blocklist_companies.txt"]:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-    
-    if not os.path.exists(filename):
-        return {"content": ""}
-        
-    with open(filename, "r") as f:
-        return {"content": f.read()}
+    name = "job_titles" if filename == "blocklist.txt" else "companies"
+    items = db.get_blocklist(name)
+    return {"content": "\n".join(items)}
 
 @app.post("/api/blocklist")
 def save_blocklist(update: BlocklistUpdate):
-    if update.filename not in ["blocklist.txt", "blocklist_companies.txt"]:
-        raise HTTPException(status_code=400, detail="Invalid filename")
-        
+    name = "job_titles" if update.filename == "blocklist.txt" else "companies"
+    items = update.content.split("\n")
     try:
-        with open(update.filename, "w") as f:
-            f.write(update.content)
+        db.update_blocklist(name, items)
         return {"status": "saved"}
-    except OSError:
-        # This will happen on Vercel
-        return {"status": "error", "detail": "Cannot save blocklist on read-only system (Vercel)."}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
 
 @app.get("/api/history")
 def get_history(limit: int = 50, offset: int = 0):

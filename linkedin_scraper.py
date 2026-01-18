@@ -906,25 +906,16 @@ def main():
     dismiss_titles = []
     dismiss_companies = []
     
-    # Read from blocklist.txt (Titles)
-    if os.path.exists('blocklist.txt'):
-        try:
-            with open('blocklist.txt', 'r') as f:
-                titles = [line.strip() for line in f if line.strip()]
-            dismiss_titles.extend(titles)
-            print(f"🚫 Loaded {len(titles)} title keywords from blocklist.txt")
-        except Exception as e:
-            print(f"⚠️  Error reading blocklist.txt: {e}")
-
-    # Read from blocklist_companies.txt (Companies)
-    if os.path.exists('blocklist_companies.txt'):
-        try:
-            with open('blocklist_companies.txt', 'r') as f:
-                companies = [line.strip() for line in f if line.strip()]
-            dismiss_companies.extend(companies)
-            print(f"🚫 Loaded {len(companies)} company keywords from blocklist_companies.txt")
-        except Exception as e:
-            print(f"⚠️  Error reading blocklist_companies.txt: {e}")
+    # Read from Supabase blocklists
+    try:
+        dismiss_titles = db.get_blocklist("job_titles")
+        dismiss_companies = db.get_blocklist("companies")
+        if dismiss_titles:
+            print(f"🚫 Loaded {len(dismiss_titles)} title keywords from Supabase")
+        if dismiss_companies:
+            print(f"🚫 Loaded {len(dismiss_companies)} company keywords from Supabase")
+    except Exception as e:
+        print(f"⚠️  Error reading blocklists from Supabase: {e}")
 
     # Add CLI args
     if args.dismiss:

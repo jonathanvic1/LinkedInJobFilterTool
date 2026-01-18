@@ -204,4 +204,29 @@ class Database:
         except Exception as e:
             raise e
 
+    def get_blocklist(self, name):
+        """Fetch blocklist items by name ('job_titles' or 'companies')"""
+        if not self.client: return []
+        try:
+            res = self.client.table("blocklists").select("item").eq("name", name).execute()
+            return [row['item'] for row in res.data]
+        except Exception as e:
+            print(f"⚠️ DB Error (get_blocklist {name}): {e}")
+            return []
+
+    def update_blocklist(self, name, items):
+        """Replace the entire blocklist for a given name."""
+        if not self.client: return
+        try:
+            # 1. Clear existing
+            self.client.table("blocklists").delete().eq("name", name).execute()
+            
+            # 2. Insert new
+            if items:
+                rows = [{"name": name, "item": item.strip()} for item in items if item.strip()]
+                if rows:
+                    self.client.table("blocklists").insert(rows).execute()
+        except Exception as e:
+            print(f"⚠️ DB Error (update_blocklist {name}): {e}")
+
 db = Database()
