@@ -141,6 +141,24 @@ class Database:
             except Exception as e:
                 print(f"   ⚠️ DB Error (save_geo_candidates): {e}")
                 
+    def get_candidate_by_corrected_name(self, name):
+        if not self.client: return None
+        try:
+            # Smart case matching: try exact title case first, then case-insensitive
+            query = name.strip()
+            response = self.client.table("geo_candidates")\
+                .select("pp_id, master_geo_id")\
+                .ilike("pp_corrected_name", query)\
+                .limit(1)\
+                .execute()
+            
+            if response.data:
+                return response.data[0]
+            return None
+        except Exception as e:
+            print(f"   ⚠️ DB Error (get_candidate_by_corrected_name): {e}")
+            return None
+
     def get_earliest_duplicate(self, title, company):
         if not self.client: return None
         try:

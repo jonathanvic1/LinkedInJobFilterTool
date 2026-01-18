@@ -398,6 +398,19 @@ class LinkedInScraper:
 
         print(f"📍 Resolving location: {location_name}...")
         
+        # 1. Step 0: Check for direct candidate match (Optimized)
+        match = db.get_candidate_by_corrected_name(query)
+        if match:
+            pp_id = match['pp_id']
+            master_id = match['master_geo_id']
+            print(f"   ✅ Direct candidate match found: {pp_id} (Master: {master_id})")
+            # Save to cache automatically to avoid future candidate hits for this exact query
+            try:
+                db.save_geo_cache(query, master_id, pp_id)
+            except:
+                pass
+            return pp_id, True
+
         # 2. Step 1: Resolve Master GeoID
         url = 'https://www.linkedin.com/voyager/api/graphql'
         query_id = 'voyagerSearchDashReusableTypeahead.4c7caa85341b17b470153ad3d1a29caf'
