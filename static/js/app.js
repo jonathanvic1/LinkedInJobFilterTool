@@ -430,16 +430,24 @@ async function loadGeoCache(manual = false) {
 
         // 1. GEO IDS Table
         const masterTbody = document.getElementById('master-geo-table-body');
-        masterTbody.innerHTML = cache.map(row => `
-            <tr class="hover:bg-gray-800 transition-colors">
-                <td class="px-6 py-4 font-mono text-xs text-blue-300 font-medium">${escapeHtml(row.query)}</td>
-                <td class="px-6 py-4 text-xs font-mono text-gray-400">${escapeHtml(row.master_id)}</td>
-                <td class="px-6 py-4 text-xs font-mono text-gray-500">${row.place_count || 0}</td>
-                <td class="px-6 py-4">
-                    <button onclick="deleteGeoCacheEntry('${row.query}')" class="text-red-400 hover:text-red-300 text-xs font-medium">Delete</button>
-                </td>
-            </tr>
-        `).join('');
+        masterTbody.innerHTML = cache.map(row => {
+            // Count candidates that have this master_id in their master_geo_id array
+            const count = candidates.filter(cand =>
+                Array.isArray(cand.master_geo_id) && cand.master_geo_id.includes(parseInt(row.master_id))
+            ).length;
+
+            return `
+                <tr class="hover:bg-gray-800 transition-colors">
+                    <td class="px-6 py-4 font-mono text-xs text-blue-300 font-medium">${escapeHtml(row.query)}</td>
+                    <td class="px-6 py-4 text-xs font-mono text-gray-400">${escapeHtml(row.master_id)}</td>
+                    <td class="px-6 py-4 text-xs font-mono text-gray-500">${count}</td>
+                    <td class="px-6 py-4 space-x-3">
+                        <button onclick="openCorrectionModal('${escapeHtml(row.query)}', '${row.master_id}')" class="text-blue-400 hover:text-blue-300 text-xs font-medium">Correct</button>
+                        <button onclick="deleteGeoCacheEntry('${row.query}')" class="text-red-400 hover:text-red-300 text-xs font-medium">Delete</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
         // 2. POPULATED PLACES Table (Full Candidates List)
         const ppTbody = document.getElementById('pp-cache-table-body');
