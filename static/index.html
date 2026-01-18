@@ -375,7 +375,10 @@
         <!-- History Tab -->
         <div id="history" class="tab-content hidden h-full flex-col">
             <header class="page-header bg-gray-800 border-b border-gray-700 px-8 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-white">Dismissal History</h2>
+                <div>
+                    <h2 class="text-xl font-bold text-white">Dismissal History</h2>
+                    <p class="text-sm text-gray-400 mt-0.5">Review and manage previously filtered jobs.</p>
+                </div>
                 <div class="flex items-center space-x-4">
                     <div id="history-pagination" class="flex items-center"></div>
                     <button onclick="loadHistory(0, true)"
@@ -414,7 +417,7 @@
                         class="text-blue-400 hover:text-blue-300 text-sm">Refresh</button>
                 </div>
             </header>
-            <div class="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="flex-1 overflow-y-auto p-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Job Titles -->
                 <div
                     class="flex flex-col bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden h-[650px]">
@@ -494,7 +497,7 @@
             <header class="page-header bg-gray-800 border-b border-gray-700 px-8 flex justify-between items-center">
                 <div>
                     <h2 class="text-xl font-bold text-white">Location Cache</h2>
-                    <p class="text-xs text-gray-400 mt-0.5">Manage and correct cached geographic identifiers.</p>
+                    <p class="text-sm text-gray-400 mt-0.5">Manage and correct cached geographic identifiers.</p>
                 </div>
                 <button onclick="loadGeoCache(true)" class="text-blue-400 hover:text-blue-300 text-sm">Refresh</button>
             </header>
@@ -535,7 +538,6 @@
                                     <th class="px-6 py-4">Query</th>
                                     <th class="px-6 py-4">Master GeoID</th>
                                     <th class="px-6 py-4">Populated Place ID</th>
-                                    <th class="px-6 py-4">Place Name</th>
                                     <th class="px-6 py-4">Actions</th>
                                 </tr>
                             </thead>

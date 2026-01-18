@@ -313,12 +313,11 @@ def get_geo_candidates(master_id: str):
 class OverrideRequest(BaseModel):
     query: str
     pp_id: str
-    pp_name: str
 
 @app.post("/api/geo_cache/override")
 def override_geo_cache(req: OverrideRequest):
     try:
-        db.update_geo_cache_override(req.query, req.pp_id, req.pp_name)
+        db.update_geo_cache_override(req.query, req.pp_id)
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

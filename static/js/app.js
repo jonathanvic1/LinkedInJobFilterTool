@@ -399,7 +399,6 @@ async function loadGeoCache(manual = false) {
                     <td class="px-6 py-4 font-mono text-xs text-blue-300 font-medium">${row.query}</td>
                     <td class="px-6 py-4 text-xs font-mono text-gray-500">${escapeHtml(row.master_id)}</td>
                     <td class="px-6 py-4 text-xs font-mono text-green-400">${escapeHtml(row.pp_id)}</td>
-                    <td class="px-6 py-4 text-xs text-white font-medium">${escapeHtml(row.name)}</td>
                     <td class="px-6 py-4 flex space-x-3">
                         <button onclick="openCorrectionModal('${row.query}', '${row.master_id}')" class="text-blue-400 hover:text-blue-300 text-xs font-medium">Correct</button>
                         <button onclick="deleteGeoCacheEntry('${row.query}')" class="text-red-400 hover:text-red-300 text-xs font-medium">Clear</button>
@@ -444,7 +443,7 @@ async function openCorrectionModal(query, masterId) {
             listEl.innerHTML = '<p class="text-center py-4 text-red-400">No candidates found in cache. Run a fresh search first.</p>';
         } else {
             listEl.innerHTML = candidates.map(c => `
-                <button onclick="applyGeoOverride('${query}', '${c.id}', '${c.name.replace(/'/g, "\\'")}')" 
+                <button onclick="applyGeoOverride('${query}', '${c.id}')" 
                     class="w-full text-left p-4 rounded-xl border border-gray-700 hover:border-blue-500 hover:bg-blue-500/10 transition-all group">
                     <div class="flex justify-between items-center">
                         <span class="text-white font-medium group-hover:text-blue-300">${escapeHtml(c.name)}</span>
@@ -462,12 +461,12 @@ function closeGeoModal() {
     document.getElementById('modal-geo-correction').classList.add('hidden');
 }
 
-async function applyGeoOverride(query, ppId, ppName) {
+async function applyGeoOverride(query, ppId) {
     try {
         const res = await apiFetch('/api/geo_cache/override', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, pp_id: ppId, pp_name: ppName })
+            body: JSON.stringify({ query, pp_id: ppId })
         });
         if (res.ok) {
             closeGeoModal();

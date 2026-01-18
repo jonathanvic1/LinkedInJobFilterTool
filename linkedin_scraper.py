@@ -369,7 +369,7 @@ class LinkedInScraper:
             print(f"   ✅ Refined to: {best_match['name']} ({best_match['id']})")
             query = location_name.strip().title() # Use title for consistency
             try:
-                db.update_geo_cache_override(location_name.strip().title(), best_match['id'], best_match['name'])
+                db.update_geo_cache_override(location_name.strip().title(), best_match['id'])
             except Exception as e:
                 print(f"   ⚠️ Cache update error during refinement: {e}")
             return best_match['id'], True
@@ -389,10 +389,9 @@ class LinkedInScraper:
         if row:
             master_id = row.get('master_geo_id')
             pp_id = row.get('populated_place_id')
-            name = row.get('place_name')
             final_id = pp_id if pp_id else master_id
             is_refined = pp_id is not None
-            print(f"   📍 Cache hit: {location_name} -> {name} (ID: {final_id}) {'[REFINED]' if is_refined else ''}")
+            print(f"   📍 Cache hit: {location_name} (ID: {final_id}) {'[REFINED]' if is_refined else ''}")
             return final_id, is_refined
 
         print(f"📍 Resolving location: {location_name}...")
@@ -407,7 +406,6 @@ class LinkedInScraper:
         full_url = f"{url}?includeWebMetadata=true&variables={variables_str}&queryId={query_id}"
         
         master_geo_id = None
-        place_name = location_name
         
         try:
             response = self.session.get(full_url, impersonate="chrome136", timeout=30)
@@ -420,8 +418,7 @@ class LinkedInScraper:
                     if '*geo' in target:
                         geo_urn = target.get('*geo')
                         master_geo_id = geo_urn.split(':')[-1]
-                        place_name = item.get('title', {}).get('text')
-                        print(f"   ✅ Master GeoID: {place_name} ({master_geo_id})")
+                        print(f"   ✅ Master GeoID: {target.get('*geo')} ({master_geo_id})")
                         break # Take first result
         except Exception as e:
             print(f"   ⚠️ Error resolving Master GeoID: {e}")
@@ -437,7 +434,7 @@ class LinkedInScraper:
         
         # 4. Save to Cache
         try:
-            db.save_geo_cache(location_name, master_geo_id, pp_id, place_name)
+            db.save_geo_cache(location_name.strip().title(), master_geo_id, pp_id)
         except Exception as e:
             print(f"   ⚠️ Cache write error: {e}")
             

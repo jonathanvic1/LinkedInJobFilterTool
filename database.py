@@ -70,20 +70,19 @@ class Database:
     def get_geo_cache(self, query):
         if not self.client: return None
         try:
-            response = self.client.table("geo_cache").select("*").eq("location_query", query.lower()).execute()
+            response = self.client.table("geo_cache").select("*").eq("location_query", query.strip().title()).execute()
             if response.data:
                 return response.data[0]
         except Exception as e:
             print(f"   ⚠️ DB Error (get_geo_cache): {e}")
         return None
 
-    def save_geo_cache(self, location_query, master_geo_id, populated_place_id, place_name):
+    def save_geo_cache(self, location_query, master_geo_id, populated_place_id):
         if not self.client: return
         data = {
-            "location_query": location_query.lower(),
+            "location_query": location_query.strip().title(),
             "master_geo_id": master_geo_id,
             "populated_place_id": populated_place_id,
-            "place_name": place_name,
             # updated_at defaults to NOW()
         }
         try:
@@ -91,14 +90,13 @@ class Database:
         except Exception as e:
             print(f"   ⚠️ DB Error (save_geo_cache): {e}")
 
-    def update_geo_cache_override(self, location_query, populated_place_id, place_name):
+    def update_geo_cache_override(self, location_query, populated_place_id):
          if not self.client: return
          try:
              self.client.table("geo_cache").update({
                  "populated_place_id": populated_place_id,
-                 "place_name": place_name,
                  "updated_at": "now()"
-             }).eq("location_query", location_query.lower()).execute()
+             }).eq("location_query", location_query.strip().title()).execute()
          except Exception as e:
              raise e
 
@@ -200,7 +198,6 @@ class Database:
                     "query": row.get('location_query', '').title(),
                     "master_id": master_id,
                     "pp_id": row.get('populated_place_id'),
-                    "name": row.get('place_name'),
                     "place_count": place_count
                 })
             return cache
@@ -210,7 +207,7 @@ class Database:
     def delete_geo_cache_entry(self, query):
         if not self.client: return
         try:
-             self.client.table("geo_cache").delete().eq("location_query", query.lower()).execute()
+             self.client.table("geo_cache").delete().eq("location_query", query.strip().title()).execute()
         except Exception as e:
             raise e
 
