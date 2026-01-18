@@ -81,8 +81,8 @@ class Database:
         if not self.client: return
         data = {
             "location_query": location_query.strip().title(),
-            "master_geo_id": master_geo_id,
-            "populated_place_id": populated_place_id,
+            "master_geo_id": int(master_geo_id) if master_geo_id else None,
+            "populated_place_id": int(populated_place_id) if populated_place_id else None,
             # updated_at defaults to NOW()
         }
         try:
@@ -137,15 +137,18 @@ class Database:
             rows = []
             for c in candidates:
                 pp_id = c['id']
-                existing_masters = existing_map.get(pp_id, "")
+            rows = []
+            for c in candidates:
+                pp_id = int(c['id'])
+                existing_masters = existing_map.get(pp_id, [])
                 
-                # Merge master_geo_ids
-                master_set = set(existing_masters.split(",")) if existing_masters else set()
-                master_set.add(master_geo_id)
-                consolidated_masters = ",".join(sorted([m for m in master_set if m.strip()]))
+                # Merge master_geo_ids as a list of integers
+                master_set = set(existing_masters) if existing_masters else set()
+                master_set.add(int(master_geo_id))
+                consolidated_masters = sorted(list(master_set))
 
                 rows.append({
-                    "master_geo_id": consolidated_masters,
+                    "master_geo_id": consolidated_masters, # Persisted as bigint[]
                     "pp_id": pp_id,
                     "pp_name": c['name'],
                     "pp_corrected_name": c.get('corrected_name') or c['name']
@@ -170,9 +173,9 @@ class Database:
             
             if response.data:
                 data = response.data[0]
-                master_ids = data.get('master_geo_id', '')
-                # Take first ID if multiple exist
-                data['master_geo_id'] = master_ids.split(',')[0] if master_ids else ''
+                master_ids = data.get('master_geo_id', [])
+                # Take first ID if it's an array
+                data['master_geo_id'] = master_ids[0] if master_ids else None
                 return data
             return None
         except Exception as e:
