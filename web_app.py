@@ -113,6 +113,10 @@ class CandidateUpdate(BaseModel):
     pp_id: str
     corrected_name: str
 
+class OverrideRequest(BaseModel):
+    query: str
+    pp_id: Optional[str] = None
+
 class SearchParams(BaseModel):
     keywords: str
     location: str
@@ -314,9 +318,6 @@ def get_geo_cache():
 def get_geo_candidates(master_id: str):
     return db.get_geo_candidates(master_id)
 
-class OverrideRequest(BaseModel):
-    query: str
-    pp_id: str
 
 @app.post("/api/geo_cache/override")
 def override_geo_cache(req: OverrideRequest):

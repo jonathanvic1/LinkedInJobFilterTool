@@ -550,32 +550,6 @@ async function clearGeoOverride(ppId) {
     }
 }
 
-// Direct override still useful if we want to set a candidate for a specific master
-async function applyGeoOverrideDirect(masterId, ppId) {
-    try {
-        const res = await apiFetch('/api/geo_cache');
-        const cache = await res.json();
-        const entry = cache.find(c => c.master_id === masterId);
-
-        if (!entry) {
-            showToast("No active search query found for this Master ID", true);
-            return;
-        }
-
-        const updateRes = await apiFetch('/api/geo_cache_override', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: entry.query, pp_id: ppId })
-        });
-
-        if (updateRes.ok) {
-            showToast(`Updated ${entry.query} to use ${ppId}`);
-            loadGeoCache();
-        }
-    } catch (e) {
-        showToast("Failed to update override", true);
-    }
-}
 
 async function deleteGeoCacheEntry(query) {
     if (!confirm('Are you sure you want to clear this cached location?')) return;
@@ -604,7 +578,7 @@ async function openCorrectionModal(query, masterId) {
         const candidates = await res.json();
 
         let listHtml = `
-            <button onclick="applyGeoOverrideDirect('${masterId}', null)" 
+            <button onclick="applyGeoOverride('${query}', null)" 
                 class="w-full text-left p-4 rounded-xl border border-dashed border-gray-700 hover:border-red-500 hover:bg-red-500/5 transition-all group mb-4">
                 <div class="flex justify-between items-center">
                     <div>
