@@ -224,8 +224,10 @@ async function loadBlocklists() {
 
         renderBlocklist('job_title');
         renderBlocklist('company_linkedin');
+        showToast("Blocklists refreshed");
     } catch (e) {
         console.error("Failed to load blocklists", e);
+        showToast("Failed to refresh blocklists", true);
     }
 }
 
@@ -360,8 +362,11 @@ async function loadHistory(offset = 0) {
                 </div>
             `;
         }
-
-    } catch (e) { console.error(e); }
+        if (offset === 0) showToast("History refreshed");
+    } catch (e) {
+        console.error(e);
+        showToast("Failed to refresh history", true);
+    }
 }
 
 // Locations (GeoID Cache)
@@ -404,9 +409,10 @@ async function loadGeoCache() {
                 </tr>
             `).join('');
         }
-
+        showToast("Location cache refreshed");
     } catch (e) {
         console.error("Failed to load geo cache", e);
+        showToast("Failed to refresh locations", true);
     }
 }
 
