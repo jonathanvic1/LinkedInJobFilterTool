@@ -462,7 +462,7 @@ class LinkedInScraper:
         # Resolve GeoID if location is specific
         geo_id = None
         is_refined = False
-        if self.location and self.location.lower() != "canada":
+        if self.location:
              geo_id, is_refined = self.resolve_geo_id(self.location)
 
         start = 0
