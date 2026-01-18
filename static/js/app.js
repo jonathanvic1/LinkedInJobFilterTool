@@ -404,6 +404,21 @@ async function clearAllGeoCandidates() {
     }
 }
 
+async function clearGeoCandidate(ppId) {
+    if (!confirm('Are you sure you want to clear this populated place?')) return;
+    try {
+        const res = await apiFetch(`/api/geo_candidate/${ppId}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast("Candidate cleared");
+            loadGeoCache();
+        } else {
+            showToast("Failed to clear candidate", true);
+        }
+    } catch (e) {
+        showToast("Error clearing candidate", true);
+    }
+}
+
 async function loadGeoCache(manual = false) {
     try {
         const [cacheRes, candidatesRes] = await Promise.all([

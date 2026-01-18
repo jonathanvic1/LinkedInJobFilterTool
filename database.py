@@ -130,6 +130,13 @@ class Database:
         except Exception as e:
             raise e
 
+    def delete_geo_candidate(self, pp_id):
+        if not self.client: return
+        try:
+            self.client.table("geo_candidates").delete().eq("pp_id", pp_id).execute()
+        except Exception as e:
+            raise e
+
     def delete_all_geo_candidates(self):
         if not self.client: return
         try:
