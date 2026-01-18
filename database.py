@@ -14,7 +14,8 @@ class Database:
     
     def _init_client(self):
         url = os.environ.get("SUPABASE_URL")
-        key = os.environ.get("SUPABASE_KEY")
+        # Prioritize Service Role Key for backend to bypass RLS
+        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
         
         if not url or not key:
             print("⚠️ SUPABASE_URL or SUPABASE_KEY not found in environment variables. DB operations will fail.")
@@ -22,7 +23,8 @@ class Database:
         else:
             try:
                 self.client: Client = create_client(url, key)
-                print("✅ Supabase client initialized")
+                is_service = "SUPABASE_SERVICE_ROLE_KEY" in os.environ
+                print(f"✅ Supabase client initialized ({'Service Role' if is_service else 'Anon/Standard Key'})")
             except Exception as e:
                 print(f"❌ Failed to initialize Supabase: {e}")
                 self.client = None

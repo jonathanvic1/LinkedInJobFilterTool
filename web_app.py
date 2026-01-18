@@ -82,9 +82,8 @@ def get_auth_config():
     """Public endpoint to provide Supabase URL and Anon Key to frontend."""
     return {
         "url": os.environ.get("SUPABASE_URL"),
-        "key": os.environ.get("SUPABASE_KEY") # Note: This should be the ANON key usually, 
-                                             # but user is using search key as service role.
-                                             # For frontend auth to work well, they need the Anon Key.
+        # Serve the Anon Key to the browser, fallback to general key
+        "key": os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_KEY")
     }
 
 @app.get("/login", response_class=HTMLResponse)
