@@ -476,7 +476,8 @@ async function loadGeoCache(manual = false) {
                         <td class="px-6 py-4 flex space-x-3">
                             <button onclick="openCandidateModal('${cand.pp_id}', '${escapeHtml(cand.pp_name)}', '${escapeHtml(cand.pp_corrected_name || '')}')" 
                                     class="text-blue-400 hover:text-blue-300 text-xs font-medium">Correct</button>
-                            ${isActive ? `<button onclick="clearGeoOverride('${cand.pp_id}')" class="text-red-400 hover:text-red-300 text-xs font-medium">Clear</button>` : ''}
+                            <button onclick="clearGeoCandidate(${cand.pp_id})" class="text-red-400 hover:text-red-300 text-xs font-medium">Clear</button>
+                            ${isActive ? `<button onclick="clearGeoOverride('${cand.pp_id}')" class="text-gray-400 hover:text-gray-300 text-xs font-medium">Reset Override</button>` : ''}
                         </td>
                     </tr>
                 `;
