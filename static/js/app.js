@@ -189,7 +189,12 @@ function renderLogs(logs) {
     }
 }
 
-// Blocklists
+// Blocklists State
+let blocklistState = {
+    job_title: [],
+    company_linkedin: []
+};
+
 async function loadBlocklists() {
     try {
         const [titles, companies] = await Promise.all([
@@ -197,23 +202,93 @@ async function loadBlocklists() {
             apiFetch('/api/blocklist?filename=blocklist_companies.txt').then(r => r.json())
         ]);
 
-        document.getElementById('blocklist-titles').value = titles.content;
-        document.getElementById('blocklist-companies').value = companies.content;
-    } catch (e) { console.error(e); }
+        blocklistState.job_title = titles.content.split('\n').filter(l => l.trim());
+        blocklistState.company_linkedin = companies.content.split('\n').filter(l => l.trim());
+
+        renderBlocklist('job_title');
+        renderBlocklist('company_linkedin');
+    } catch (e) {
+        console.error("Failed to load blocklists", e);
+    }
 }
 
-async function saveBlocklist(filename) {
-    const id = filename === 'blocklist.txt' ? 'blocklist-titles' : 'blocklist-companies';
-    const content = document.getElementById(id).value;
+function renderBlocklist(type) {
+    const list = blocklistState[type];
+    const containerId = type === 'job_title' ? 'titles-list-container' : 'companies-list-container';
+    const searchId = type === 'job_title' ? 'search-title-input' : 'search-company-input';
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const searchTerm = document.getElementById(searchId).value.toLowerCase();
+    const filtered = list.filter(item => item.toLowerCase().includes(searchTerm));
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-10 text-gray-700 italic text-xs">No items found${searchTerm ? ' matching search' : ''}</div>`;
+        return;
+    }
+
+    container.innerHTML = filtered.map((item, index) => {
+        // Find original index in state for deletion/edit
+        const originalIndex = list.indexOf(item);
+        return `
+            <div class="group flex items-center justify-between px-3 py-1.5 hover:bg-gray-800/50 rounded-lg transition-all border border-transparent hover:border-gray-700/50">
+                <input type="text" value="${escapeHtml(item)}" 
+                    onchange="editBlocklistItem('${type}', ${originalIndex}, this.value)"
+                    class="bg-transparent border-none text-gray-300 text-sm focus:outline-none focus:ring-0 w-full mr-2 py-0">
+                <button onclick="removeBlocklistItem('${type}', ${originalIndex})" 
+                    class="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function addBlocklistItem(type) {
+    const inputId = type === 'job_title' ? 'add-title-input' : 'add-company-input';
+    const input = document.getElementById(inputId);
+    const value = input.value.trim();
+
+    if (value && !blocklistState[type].includes(value)) {
+        blocklistState[type].unshift(value); // Add to top
+        input.value = '';
+        renderBlocklist(type);
+    }
+}
+
+function removeBlocklistItem(type, index) {
+    blocklistState[type].splice(index, 1);
+    renderBlocklist(type);
+}
+
+function editBlocklistItem(type, index, newValue) {
+    if (newValue.trim()) {
+        blocklistState[type][index] = newValue.trim();
+    } else {
+        removeBlocklistItem(type, index);
+    }
+}
+
+async function saveBlocklist(type) {
+    const content = blocklistState[type].join('\n');
+    const filename = type === 'job_title' ? 'blocklist.txt' : 'blocklist_companies.txt';
 
     try {
-        await apiFetch('/api/blocklist', {
+        const res = await apiFetch('/api/blocklist', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ filename, content })
         });
-        alert('Blocked list saved!');
-    } catch (e) { alert('Save failed'); }
+        if (res.ok) {
+            alert(`${type === 'job_title' ? 'Job titles' : 'Companies'} saved successfully!`);
+        } else {
+            throw new Error('Save failed');
+        }
+    } catch (e) {
+        alert('Failed to save changes');
+    }
 }
 
 // History
