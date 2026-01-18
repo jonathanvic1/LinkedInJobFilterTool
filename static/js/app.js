@@ -193,8 +193,8 @@ function renderLogs(logs) {
 async function loadBlocklists() {
     try {
         const [titles, companies] = await Promise.all([
-            fetch('/api/blocklist?filename=blocklist.txt').then(r => r.json()),
-            fetch('/api/blocklist?filename=blocklist_companies.txt').then(r => r.json())
+            apiFetch('/api/blocklist?filename=blocklist.txt').then(r => r.json()),
+            apiFetch('/api/blocklist?filename=blocklist_companies.txt').then(r => r.json())
         ]);
 
         document.getElementById('blocklist-titles').value = titles.content;
