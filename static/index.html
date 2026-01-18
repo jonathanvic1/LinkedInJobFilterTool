@@ -46,6 +46,17 @@
             color: #10b981;
             text-shadow: 0 0 2px rgba(16, 185, 129, 0.2);
         }
+
+        /* Unified header height - single source of truth */
+        :root {
+            --header-height: 72px;
+        }
+
+        .page-header {
+            height: var(--header-height);
+            min-height: var(--header-height);
+            max-height: var(--header-height);
+        }
     </style>
 </head>
 
@@ -53,7 +64,7 @@
 
     <!-- Sidebar -->
     <aside class="w-64 bg-gray-800 border-r border-gray-700 flex flex-col flex-shrink-0">
-        <div class="p-6 border-b border-gray-700 px-8 h-[85px] flex flex-col justify-center">
+        <div class="page-header border-b border-gray-700 px-8 flex flex-col justify-center">
             <h1
                 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 tracking-tight">
                 Job Filter
@@ -130,7 +141,7 @@
         <div id="scraper" class="tab-content flex flex-col h-full">
             <!-- Header -->
             <header
-                class="bg-gray-800 border-b border-gray-700 px-8 h-[85px] flex justify-between items-center shadow-sm z-10">
+                class="page-header bg-gray-800 border-b border-gray-700 px-8 flex justify-between items-center shadow-sm z-10">
                 <div>
                     <h2 class="text-xl font-bold text-white">New Search</h2>
                     <p class="text-sm text-gray-400 mt-0.5">Configure your parameters to find relevant jobs.</p>
@@ -305,7 +316,7 @@
 
         <!-- History Tab -->
         <div id="history" class="tab-content hidden h-full flex-col">
-            <header class="bg-gray-800 border-b border-gray-700 px-8 h-[85px] flex justify-between items-center">
+            <header class="page-header bg-gray-800 border-b border-gray-700 px-8 flex justify-between items-center">
                 <h2 class="text-xl font-bold text-white">Dismissal History</h2>
                 <div class="flex items-center space-x-4">
                     <div id="history-pagination" class="flex items-center"></div>
@@ -334,7 +345,7 @@
 
         <!-- Blocklists Tab -->
         <div id="blocklists" class="tab-content hidden h-full flex-col">
-            <header class="bg-gray-800 border-b border-gray-700 px-8 h-[85px] flex justify-between items-center">
+            <header class="page-header bg-gray-800 border-b border-gray-700 px-8 flex justify-between items-center">
                 <div>
                     <h2 class="text-xl font-bold text-white">Manage Blocklists</h2>
                     <p class="text-sm text-gray-400 mt-0.5">Configure criteria to automatically dismiss jobs.</p>
@@ -421,7 +432,7 @@
 
         <!-- Locations Tab -->
         <div id="locations" class="tab-content hidden h-full flex-col">
-            <header class="bg-gray-800 border-b border-gray-700 px-8 h-[85px] flex justify-between items-center">
+            <header class="page-header bg-gray-800 border-b border-gray-700 px-8 flex justify-between items-center">
                 <h2 class="text-xl font-bold text-white">Location Cache Management</h2>
                 <button onclick="loadGeoCache()" class="text-blue-400 hover:text-blue-300 text-sm">Refresh</button>
             </header>
