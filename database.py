@@ -125,6 +125,14 @@ class Database:
         except Exception as e:
             raise e
 
+    def delete_all_geo_candidates(self):
+        if not self.client: return
+        try:
+            # Delete all rows where pp_id is not null (effective clear)
+            self.client.table("geo_candidates").delete().neq("pp_id", 0).execute()
+        except Exception as e:
+            raise e
+
     def save_geo_candidates(self, master_geo_id, candidates):
         if not self.client: return
         

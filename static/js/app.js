@@ -327,14 +327,9 @@ function formatDateTime(dateStr) {
     try {
         const d = new Date(dateStr);
         if (isNaN(d.getTime())) return 'N/A';
-        return d.toLocaleString([], {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
+        const date = d.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric' });
+        const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return `${date}<br>${time}`;
     } catch (e) {
         return 'N/A';
     }
@@ -394,6 +389,21 @@ async function loadHistory(offset = 0, manual = false) {
 }
 
 // Locations (GeoID Cache)
+async function clearAllGeoCandidates() {
+    if (!confirm('Are you sure you want to clear ALL discovered populated places? This cannot be undone.')) return;
+    try {
+        const res = await apiFetch('/api/geo_candidates', { method: 'DELETE' });
+        if (res.ok) {
+            showToast("All candidates cleared");
+            loadGeoCache();
+        } else {
+            showToast("Failed to clear candidates", true);
+        }
+    } catch (e) {
+        showToast("Error clearing candidates", true);
+    }
+}
+
 async function loadGeoCache(manual = false) {
     try {
         const [cacheRes, candidatesRes] = await Promise.all([

@@ -338,6 +338,14 @@ def update_geo_candidate(update: CandidateUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.delete("/api/geo_candidates")
+def delete_all_geo_candidates():
+    try:
+        db.delete_all_geo_candidates()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.delete("/api/geo_cache/{query}")
 def delete_geo_cache_entry(query: str):
     try:
