@@ -143,13 +143,11 @@ class Database:
         
         try:
             # 1. Fetch existing candidates for these pp_ids
-            pp_ids = [int(c['id']) for c in candidates]
+            # PostgREST serialization requires string lists for .in_ filters
+            pp_ids = [str(c['id']) for c in candidates]
             response = self.client.table("geo_candidates").select("pp_id, master_geo_id").in_("pp_id", pp_ids).execute()
             existing_map = {row['pp_id']: row['master_geo_id'] for row in response.data} if response.data else {}
 
-            rows = []
-            for c in candidates:
-                pp_id = c['id']
             rows = []
             for c in candidates:
                 pp_id = int(c['id'])

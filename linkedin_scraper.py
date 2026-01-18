@@ -449,7 +449,9 @@ class LinkedInScraper:
         
         # 4. Save to Cache
         try:
-            db.save_geo_cache(location_name.strip().title(), master_geo_id, pp_id)
+            # Only cache pp_id if it was actually refined from the master id
+            cache_pp_id = pp_id if is_refined else None
+            db.save_geo_cache(location_name.strip().title(), master_geo_id, cache_pp_id)
         except Exception as e:
             print(f"   ⚠️ Cache write error: {e}")
             
