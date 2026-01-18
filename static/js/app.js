@@ -322,6 +322,24 @@ async function saveBlocklist(type) {
 }
 
 // History
+function formatDateTime(dateStr) {
+    if (!dateStr) return 'N/A';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return 'N/A';
+        return d.toLocaleString([], {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    } catch (e) {
+        return 'N/A';
+    }
+}
+
 async function loadHistory(offset = 0, manual = false) {
     historyOffset = offset;
     try {
@@ -338,8 +356,8 @@ async function loadHistory(offset = 0, manual = false) {
                 <td class="px-6 py-4 text-xs">
                     <span class="px-2 py-1 rounded bg-red-900 text-red-200">${escapeHtml(formatReason(row.reason))}</span>
                 </td>
-                <td class="px-6 py-4 text-gray-500 text-xs">${row.listed_at ? new Date(row.listed_at).toLocaleDateString() : 'N/A'}</td>
-                <td class="px-6 py-4 text-gray-400 text-xs font-mono">${new Date(row.dismissed_at).toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</td>
+                <td class="px-6 py-4 text-gray-400 text-xs">${formatDateTime(row.listed_at)}</td>
+                <td class="px-6 py-4 text-gray-400 text-xs">${formatDateTime(row.dismissed_at)}</td>
                 <td class="px-6 py-4">
                     <a href="https://www.linkedin.com/jobs/view/${row.job_id}" target="_blank" class="text-blue-400 hover:text-blue-300 hover:underline text-xs">View Job</a>
                 </td>
