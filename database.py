@@ -103,7 +103,12 @@ class Database:
     def get_geo_candidates(self, master_geo_id):
         if not self.client: return []
         try:
-            response = self.client.table("geo_candidates").select("*").eq("master_geo_id", master_geo_id).execute()
+            # master_geo_id is now a bigint[] column, so we use contains logic
+            # PostgREST expects an array literal or list for .contains()
+            response = self.client.table("geo_candidates")\
+                .select("*")\
+                .contains("master_geo_id", [int(master_geo_id)])\
+                .execute()
             return [{"id": r['pp_id'], "name": r['pp_name'], "corrected_name": r.get('pp_corrected_name')} for r in response.data]
         except Exception as e:
             print(f"   ⚠️ DB Error (get_geo_candidates): {e}")
@@ -138,7 +143,7 @@ class Database:
         
         try:
             # 1. Fetch existing candidates for these pp_ids
-            pp_ids = [c['id'] for c in candidates]
+            pp_ids = [int(c['id']) for c in candidates]
             response = self.client.table("geo_candidates").select("pp_id, master_geo_id").in_("pp_id", pp_ids).execute()
             existing_map = {row['pp_id']: row['master_geo_id'] for row in response.data} if response.data else {}
 
