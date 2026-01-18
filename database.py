@@ -118,6 +118,13 @@ class Database:
             print(f"   ⚠️ DB Error (get_all_geo_candidates): {e}")
             return []
 
+    def update_geo_candidate(self, pp_id, corrected_name):
+        if not self.client: return
+        try:
+            self.client.table("geo_candidates").update({"pp_corrected_name": corrected_name}).eq("pp_id", pp_id).execute()
+        except Exception as e:
+            raise e
+
     def save_geo_candidates(self, master_geo_id, candidates):
         if not self.client: return
         rows = []

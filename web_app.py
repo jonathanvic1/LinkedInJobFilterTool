@@ -109,6 +109,10 @@ state = ScraperState()
 log_lock = threading.Lock()
 
 # Models
+class CandidateUpdate(BaseModel):
+    pp_id: str
+    corrected_name: str
+
 class SearchParams(BaseModel):
     keywords: str
     location: str
@@ -325,6 +329,14 @@ def override_geo_cache(req: OverrideRequest):
 @app.get("/api/geo_candidates")
 def get_all_geo_candidates():
     return db.get_all_geo_candidates()
+
+@app.post("/api/geo_candidate/update")
+def update_geo_candidate(update: CandidateUpdate):
+    try:
+        db.update_geo_candidate(update.pp_id, update.corrected_name)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/geo_cache/{query}")
 def delete_geo_cache_entry(query: str):

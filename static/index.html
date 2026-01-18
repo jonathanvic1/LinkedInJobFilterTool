@@ -541,8 +541,6 @@
                         <table class="w-full text-left text-sm">
                             <thead class="bg-gray-900 text-gray-400 uppercase font-bold text-xs">
                                 <tr>
-                                    <th class="px-6 py-4">Query / Context</th>
-                                    <th class="px-6 py-4">Master GeoID</th>
                                     <th class="px-6 py-4">Candidate ID</th>
                                     <th class="px-6 py-4">Name</th>
                                     <th class="px-6 py-4">Corrected Name</th>
@@ -587,6 +585,48 @@
             <div class="p-6 border-t border-gray-700 flex justify-end">
                 <button onclick="closeGeoModal()"
                     class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-colors">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Candidate Name Correction Modal -->
+    <div id="modal-candidate-name-correction"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-md shadow-2xl flex flex-col">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                <h3 class="text-xl font-bold text-white">Correct Candidate Name</h3>
+                <button onclick="closeCandidateModal()" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-widest">Candidate
+                        ID</label>
+                    <p id="candidate-id-display" class="text-sm font-mono text-blue-400"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-widest">Original
+                        Name</label>
+                    <p id="candidate-original-name" class="text-sm text-gray-300"></p>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-widest">Corrected
+                        Name</label>
+                    <input type="text" id="candidate-corrected-name-input"
+                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter refined name...">
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-700 flex justify-end space-x-3">
+                <button onclick="closeCandidateModal()"
+                    class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
+                <button onclick="saveCandidateNameUpdate()"
+                    class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-bold transition-all shadow-lg shadow-blue-600/20">Save
+                    Correction</button>
             </div>
         </div>
     </div>

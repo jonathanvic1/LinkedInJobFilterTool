@@ -410,16 +410,13 @@ async function loadGeoCache(manual = false) {
 
                 return `
                     <tr class="hover:bg-gray-800 transition-colors ${isActive ? 'border-l-2 border-green-500/50 bg-green-500/5' : ''}">
-                        <td class="px-6 py-4 text-xs ${isActive ? 'text-green-400 font-bold' : 'text-gray-500'}">
-                            ${isActive ? `Active: ${activeFor}` : 'Inactive'}
-                        </td>
-                        <td class="px-6 py-4 text-xs font-mono text-gray-500">${cand.master_geo_id}</td>
                         <td class="px-6 py-4 text-xs font-mono text-blue-400">${cand.pp_id}</td>
                         <td class="px-6 py-4 text-xs text-gray-300">${escapeHtml(cand.pp_name || 'N/A')}</td>
                         <td class="px-6 py-4 text-xs text-white font-medium">${escapeHtml(cand.pp_corrected_name || 'N/A')}</td>
-                        <td class="px-6 py-4">
-                            <button onclick="applyGeoOverrideDirect('${cand.master_geo_id}', '${cand.pp_id}')" 
-                                    class="text-blue-400 hover:text-blue-300 text-xs font-medium">Use for Master</button>
+                        <td class="px-6 py-4 flex space-x-3">
+                            <button onclick="openCandidateModal('${cand.pp_id}', '${escapeHtml(cand.pp_name)}', '${escapeHtml(cand.pp_corrected_name || '')}')" 
+                                    class="text-blue-400 hover:text-blue-300 text-xs font-medium">Correct</button>
+                            ${isActive ? `<button onclick="clearGeoOverride('${cand.pp_id}')" class="text-red-400 hover:text-red-300 text-xs font-medium">Clear</button>` : ''}
                         </td>
                     </tr>
                 `;
@@ -432,7 +429,59 @@ async function loadGeoCache(manual = false) {
     }
 }
 
-// New helper for direct override from candidate list
+// Candidate Correction Modal
+let currentCandidatePpId = null;
+
+function openCandidateModal(ppId, originalName, correctedName) {
+    currentCandidatePpId = ppId;
+    document.getElementById('candidate-id-display').textContent = ppId;
+    document.getElementById('candidate-original-name').textContent = originalName;
+    document.getElementById('candidate-corrected-name-input').value = correctedName || originalName;
+    document.getElementById('modal-candidate-name-correction').classList.remove('hidden');
+}
+
+function closeCandidateModal() {
+    document.getElementById('modal-candidate-name-correction').classList.add('hidden');
+    currentCandidatePpId = null;
+}
+
+async function saveCandidateNameUpdate() {
+    const correctedName = document.getElementById('candidate-corrected-name-input').value.trim();
+    if (!correctedName) return showToast("Name cannot be empty", true);
+
+    try {
+        const res = await apiFetch('/api/geo_candidate/update', {
+            method: 'POST',
+            body: JSON.stringify({ pp_id: currentCandidatePpId, corrected_name: correctedName })
+        });
+        if (res.ok) {
+            showToast("Candidate name updated");
+            closeCandidateModal();
+            loadGeoCache();
+        }
+    } catch (e) {
+        showToast("Update failed", true);
+    }
+}
+
+async function clearGeoOverride(ppId) {
+    if (!confirm('Clear this override from all queries?')) return;
+    try {
+        const res = await apiFetch('/api/geo_cache');
+        const cache = await res.json();
+        const entries = cache.filter(c => c.pp_id === ppId);
+
+        for (const entry of entries) {
+            await apiFetch(`/api/geo_cache/${encodeURIComponent(entry.query)}`, { method: 'DELETE' });
+        }
+        showToast("Override cleared");
+        loadGeoCache();
+    } catch (e) {
+        showToast("Clear failed", true);
+    }
+}
+
+// Direct override still useful if we want to set a candidate for a specific master
 async function applyGeoOverrideDirect(masterId, ppId) {
     try {
         const res = await apiFetch('/api/geo_cache');
