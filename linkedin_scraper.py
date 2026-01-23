@@ -419,7 +419,8 @@ class LinkedInScraper:
             # Save to cache automatically to avoid future candidate hits for this exact query
             try:
                 db.save_geo_cache(query, master_id, pp_id)
-            except:
+            except Exception as e:
+                print(f"   ⚠️ Scraper Warning (Save Geo Cache): {e}")
                 pass
             return pp_id, True
 

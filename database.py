@@ -299,7 +299,8 @@ class Database:
             try:
                 cand_res = self.client.table("geo_candidates").select("*").execute()
                 all_candidates = cand_res.data
-            except:
+            except Exception as e:
+                print(f"   ⚠️ DB Warning (Load Candidates): {e}")
                 pass
 
             cache = []
@@ -394,7 +395,7 @@ class Database:
             self.client.table("user_settings").upsert(data).execute()
             return True
         except Exception as e:
-            print(f"⚠️ DB Error (save_user_settings): {e}")
+            print(f"   ⚠️ DB Error (save_user_settings): {e}")
             return False
 
 db = Database()
