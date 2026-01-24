@@ -38,6 +38,21 @@ class Database:
         except Exception as e:
             print(f"⚠️ DB Error (is_job_dismissed): {e}")
             return False
+            
+    def get_dismissed_job_ids(self, job_ids, user_id=None):
+        """Batch check if jobs are dismissed."""
+        if not self.client or not job_ids: return set()
+        try:
+            # PostgREST in_ expects parens or strict formatting, but Supabase-py handles list directly often.
+            # However, for safety, let's pass list directly.
+            query = self.client.table("dismissed_jobs").select("job_id").in_("job_id", job_ids)
+            if user_id:
+                query = query.eq("user_id", user_id)
+            response = query.execute()
+            return {row['job_id'] for row in response.data}
+        except Exception as e:
+            print(f"⚠️ DB Error (get_dismissed_job_ids): {e}")
+            return set()
 
     def save_dismissed_job(self, job_id, title, company, location, reason, job_url, company_url, is_reposted=False, listed_at=None, user_id=None):
         if not self.client: return

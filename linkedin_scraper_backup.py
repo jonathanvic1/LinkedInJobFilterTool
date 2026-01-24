@@ -106,8 +106,13 @@ class LinkedInScraper:
             cookie_str = os.environ.get('LINKEDIN_COOKIES')
         
         if not cookie_str:
-            print("❌ Error: No cookie provided. Pass cookie_string or set LINKEDIN_COOKIES env var.")
-            return
+            try:
+                with open('userCookie.txt', 'r') as f:
+                    cookie_str = f.read().strip()
+            except FileNotFoundError:
+                print("❌ Error: LINKEDIN_COOKIES env var not set and userCookie.txt not found!")
+                # On Vercel, this is fatal if env var is missing
+                return
 
         if not cookie_str:
             return
@@ -836,106 +841,147 @@ class LinkedInScraper:
         return processed, dismissed, skipped, reposted, easy, early, reviewing, applied, viewed
 
     def process_jobs(self):
-        """Main processing loop: Fetch (Concurrent) -> Filter -> Dismiss."""
+        """Main processing loop: Fetch, Filter, Dismiss."""
         if not self.dismiss_titles and not self.dismiss_companies:
             print("ℹ️ No blocklists provided. Scraping only...")
+        processed_count = 0
+        dismissed_count = 0
+        skipped_count = 0
+        reposted_count = 0
+        easy_apply_count = 0
+        early_applicant_count = 0
+        actively_reviewing_count = 0
+        applied_count = 0
+        viewed_count = 0
         
-        # Init counters
-        total_processed = 0
-        total_dismissed = 0
-        total_skipped = 0
-        total_reposted = 0
-        total_easy = 0
-        total_early = 0
-        total_reviewing = 0
-        total_applied = 0
-        total_viewed = 0
-        
-        # Resolve Location first
-        geo_id = None
-        is_refined = False
-        if self.location:
-             geo_id, is_refined = self.resolve_geo_id(self.location)
-
-        # Sort Logic
-        sort_by = "R" if self.relevant else "DD"
-        time_range = None
-        if self.time_filter == '30m': time_range = "r1800"
-        elif self.time_filter == '1h': time_range = "r3600"
-        elif self.time_filter == '8h': time_range = "r28800"
-        elif self.time_filter == '24h': time_range = "r86400"
-        elif self.time_filter == '2d': time_range = "r172800"
-        elif self.time_filter == '3d': time_range = "r259200"
-        elif self.time_filter == 'week': time_range = "r604800"
-        elif self.time_filter == 'month': time_range = "r2592000"
-
-        # 1. Fetch First Page (Synchronous) to get Total Count
-        print("🚀 Fetching Page 0 to determine scope...")
-        page0_jobs, total_jobs = self.fetch_page(0, count=25, geo_id=geo_id, is_refined=is_refined, sort_by=sort_by, time_range=time_range)
-        
-        if not page0_jobs:
-            print("❌ No jobs found or API error on first page.")
-            return
-
-        if total_jobs:
-            print(f"📊 Total jobs available: {total_jobs}")
-        
-        # Process Page 0
-        p, d, s, rep, easy, early, rev, app, view = self.process_page_result(page0_jobs)
-        total_processed += p
-        total_dismissed += d
-        total_skipped += s
-        total_reposted += rep
-        total_easy += easy
-        total_early += early
-        total_reviewing += rev
-        total_applied += app
-        total_viewed += view
-
-        # 2. Concurrent Fetch for remaining pages
-        max_workers = 3
-        # Calculate limit
-        target_limit = self.limit_jobs if self.limit_jobs > 0 else (total_jobs if total_jobs else 1000)
-        # Cap at realistic number if unlimted, or respect limit
-        # Each page is 25
-        
-        # Determine pages needed
-        # We already did start=0. Next is 25, 50, ... up to target_limit
-        offsets = list(range(25, target_limit, 25))
-        
-        if offsets:
-            print(f"🚀 Starting concurrent fetch for {len(offsets)} pages with {max_workers} workers...")
+        # Iterate over the generator which yields pages of jobs
+        for page_jobs in self.fetch_jobs():
+            # Batch check for dismissed jobs
+            job_ids = [j.get('job_id') for j in page_jobs if j.get('job_id')]
+            dismissed_ids = db.get_dismissed_job_ids(job_ids, self.user_id) if job_ids else set()
             
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                # Submit all tasks
-                future_to_offset = {
-                    executor.submit(self.fetch_page, start, 25, geo_id, is_refined, sort_by, time_range): start 
-                    for start in offsets
-                }
+            page_reposted = sum(1 for j in page_jobs if j.get('is_reposted'))
+            page_easy_apply = sum(1 for j in page_jobs if j.get('is_easy_apply'))
+            page_early = sum(1 for j in page_jobs if j.get('is_early_applicant'))
+            page_reviewing = sum(1 for j in page_jobs if j.get('is_actively_reviewing'))
+            page_applied = sum(1 for j in page_jobs if j.get('is_applied'))
+            page_viewed = sum(1 for j in page_jobs if j.get('is_viewed') and not j.get('is_applied'))
+            
+            print(f"📝 Processing page with {len(page_jobs)} jobs ({page_reposted} reposted, {page_easy_apply} easy apply, {page_early} early, {page_reviewing} reviewing, {page_applied} applied, {page_viewed} viewed)...")
+            
+            for job in tqdm(page_jobs, desc="Filtering Page", leave=False):
+                # Removed unconditional sleep(self.job_delay) here to speed up processing
                 
-                # Process as they complete
-                for future in concurrent.futures.as_completed(future_to_offset):
-                    start = future_to_offset[future]
-                    try:
-                        page_jobs, _ = future.result()
-                        if page_jobs:
-                            p, d, s, rep, easy, early, rev, app, view = self.process_page_result(page_jobs)
-                            total_processed += p
-                            total_dismissed += d
-                            total_skipped += s
-                            total_reposted += rep
-                            total_easy += easy
-                            total_early += early
-                            total_reviewing += rev
-                            total_applied += app
-                            total_viewed += view
-                        else:
-                            print(f"⚠️ Empty result for offset {start}")
-                    except Exception as exc:
-                        print(f"❌ Exception fetching offset {start}: {exc}")
-        
-        print(f"\n✨ Done! Processed {total_processed} jobs. Dismissed {total_dismissed} jobs. Skipped {total_skipped}.")
-        print(f"📊 Stats: Reposted: {total_reposted}, Easy: {total_easy}, Early: {total_early}, Reviewing: {total_reviewing}, Applied: {total_applied}, Viewed: {total_viewed}")
+                title = job.get('title', 'Unknown')
+                # print(f"DEBUG: Processing title: '{title}' (lower: '{title.lower()}')")
+                if job.get('is_reposted'):
+                    reposted_count += 1
+                
+                if job.get('is_easy_apply'):
+                    easy_apply_count += 1
+                    
+                if job.get('is_early_applicant'):
+                    early_applicant_count += 1
+                    
+                if job.get('is_actively_reviewing'):
+                    actively_reviewing_count += 1
+                
+                # Applied/Viewed Logic (Applied takes precedence for counting)
+                if job.get('is_applied'):
+                    applied_count += 1
+                elif job.get('is_viewed'):
+                    viewed_count += 1
+                job_id = job.get('job_id')
+                title = job.get('title', 'Unknown')
+                company = job.get('company', 'Unknown')
+                
+                processed_count += 1
+                
+                processed_count += 1
+                
+                # Check if already processed/dismissed (Batch result)
+                if job_id in dismissed_ids:
+                    # print(f"   ⏩ Skipping already dismissed job: {title}")
+                    skipped_count += 1
+                    continue
+    
+                location = job.get('location', 'Unknown')
+                dismiss_urn = job.get('dismiss_urn')
+                job_url = job.get('job_url')
+                company_url = job.get('company_linkedin')
+                is_reposted = job.get('is_reposted', False)
+                listed_at = job.get('listed_at')
+                
+                # Check for dismissal keywords
+                should_dismiss = False
+                dismiss_reason = None
+                
+                # Check Title Blocklist
+                for keyword in self.dismiss_titles:
+                    if keyword in title.lower():
+                        should_dismiss = True
+                        dismiss_reason = "job_title" 
+                        print(f"   🔍 Match found: '{keyword}' in Title: '{title}'")
+                        break
+                
+                # Check Company Blocklist (if not already dismissed)
+                if not should_dismiss:
+                    match_source = "Company URL" # Reset default
+                    for keyword in self.dismiss_companies:
+                        # Check URL ONLY (as requested)
+                        if company_url and keyword in company_url.lower():
+                            should_dismiss = True
+                            dismiss_reason = "company"
+                            print(f"   🔍 Match found: '{keyword}' in {match_source}: '{company_url}'")
+                            break
+                
+                # Check Auto-Dismiss for Applied Jobs
+                if not should_dismiss and job.get('is_applied'):
+                    should_dismiss = True
+                    dismiss_reason = "applied"
+                    print(f"   🚫 Auto-dismissing already applied job: '{title}'")
+                    
+                # Description-Based Deduplication (Final Check)
+                if not should_dismiss:
+                    # Check if potential duplicate exists in DB
+                    dup_id = self.get_earliest_duplicate_job_id(title, company)
+                    if dup_id:
+                        # Don't compare against itself if it happens to be the same ID (unlikely due to is_job_dismissed check, but safe)
+                        if dup_id != job_id:
+                            print(f"   🤔 Found potential duplicate in DB (ID: {dup_id}). Comparing descriptions...")
+                            
+                            # Sleep before fetching to be nice since we are hitting API
+                            if self.job_delay > 0: sleep(self.job_delay)
+                            
+                            # Fetch descriptions
+                            desc_new = self.fetch_job_description(job_id)
+                            desc_old = self.fetch_job_description(dup_id)
+                            
+                            if desc_new and desc_old:
+                                # Compare stripped descriptions
+                                if desc_new.strip() == desc_old.strip():
+                                    should_dismiss = True
+                                    dismiss_reason = f"duplicate_description:matched_{dup_id}"
+                                    print(f"   🚫 Text descriptions match! Deduplicating...")
+                                else:
+                                    print(f"   ✅ Descriptions differ. Not a duplicate.")
+                            else:
+                                print(f"   ⚠️ Could not fetch one or both descriptions. Skipping deduplication.")
+                
+                if should_dismiss:
+                    # Sleep before action if delay configured
+                    if self.job_delay > 0: sleep(self.job_delay)
+                    
+                    if self.dismiss_job(job_id, title, company, location, dismiss_urn, reason=dismiss_reason, job_url=job_url, company_url=company_url, is_reposted=is_reposted, listed_at=listed_at):
+                        dismissed_count += 1
+            
+            # Check limit after processing page
+            if self.limit_jobs > 0 and processed_count >= self.limit_jobs:
+                print(f"🛑 limit reached: {self.limit_jobs}")
+                break
+                
+        print(f"\n✨ Done! Processed {processed_count} jobs. Dismissed {dismissed_count} jobs. Skipped {skipped_count} already processed.")
+        print(f"📊 Stats: Reposted: {reposted_count}, Easy Apply: {easy_apply_count}, Early Applicant: {early_applicant_count}, Actively Reviewing: {actively_reviewing_count}, Applied: {applied_count}, Viewed: {viewed_count}")
 
     def close_session(self):
         if hasattr(self, 'session'):
