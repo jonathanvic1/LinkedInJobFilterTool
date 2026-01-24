@@ -153,7 +153,7 @@ class LinkedInScraper:
         return db.delete_dismissed_job(job_id)
 
     def dismiss_job(self, job_id, title, company, location, dismiss_urn=None, reason=None, job_url=None, company_url=None, is_reposted=False, listed_at=None):
-        """Dismiss a job using Voyager API and save to DB."""
+        """Dismiss a job using Voyager API. Returns job data dict if successful, None otherwise."""
         print(f"🚫 Dismissing job: {title} at {company}...")
         
         # Construct payload
@@ -166,8 +166,6 @@ class LinkedInScraper:
         }
         
         try:
-            # Important: The user CURL shows content-type: application/json
-            # curl_cffi handles json= parameter by setting content-type automatically
             response = self.session.post(
                 DISMISS_URL,
                 json=payload,
@@ -177,16 +175,25 @@ class LinkedInScraper:
             
             if response.status_code in [200, 201, 204]:
                 print(f"   ✅ Successfully dismissed on LinkedIn")
-                self.save_dismissed_job(job_id, title, company, location, reason, job_url, company_url, is_reposted, listed_at)
-                return True
+                # Return job data for batch save later
+                return {
+                    "job_id": job_id,
+                    "title": title,
+                    "company": company,
+                    "location": location,
+                    "dismiss_reason": reason,
+                    "company_linkedin": company_url,
+                    "is_reposted": is_reposted,
+                    "listed_at": listed_at,
+                    "user_id": self.user_id
+                }
             else:
                 print(f"   ❌ Failed to dismiss on LinkedIn: {response.status_code}")
-                # print(f"   {response.text[:200]}") # Less verbose
-                return False
+                return None
                 
         except Exception as e:
             print(f"   ❌ Error dismissing job: {e}")
-            return False
+            return None
             
     def undo_dismiss(self, job_id):
         """Undo dismissal of a job using Voyager API and remove from DB."""
@@ -741,10 +748,11 @@ class LinkedInScraper:
             return [], 0
 
     def process_page_result(self, page_jobs):
-        """Process a single page of results (called from loop or future)."""
-        if not page_jobs: return 0, 0, 0, 0, 0, 0, 0, 0, 0
+        """Process a single page of results. Returns (stats_tuple, list_of_dismissed_job_dicts)."""
+        if not page_jobs: return (0, 0, 0, 0, 0, 0, 0, 0, 0), []
 
         processed = dismissed = skipped = reposted = easy = early = reviewing = applied = viewed = 0
+        dismissed_jobs_data = []  # Collect for batch save
         
         # Batch check dismissal
         job_ids = [j.get('job_id') for j in page_jobs if j.get('job_id')]
@@ -830,13 +838,15 @@ class LinkedInScraper:
             
             if should_dismiss:
                 if self.job_delay > 0: sleep(self.job_delay)
-                if self.dismiss_job(job_id, title, company, location, dismiss_urn, reason=dismiss_reason, job_url=job_url, company_url=company_url, is_reposted=is_reposted, listed_at=listed_at):
+                job_data = self.dismiss_job(job_id, title, company, location, dismiss_urn, reason=dismiss_reason, job_url=job_url, company_url=company_url, is_reposted=is_reposted, listed_at=listed_at)
+                if job_data:
                     dismissed += 1
+                    dismissed_jobs_data.append(job_data)
         
-        return processed, dismissed, skipped, reposted, easy, early, reviewing, applied, viewed
+        return (processed, dismissed, skipped, reposted, easy, early, reviewing, applied, viewed), dismissed_jobs_data
 
     def process_jobs(self):
-        """Main processing loop: Fetch (Concurrent) -> Filter -> Dismiss."""
+        """Main processing loop: Fetch (Concurrent) -> Filter -> Dismiss -> Batch Save."""
         if not self.dismiss_titles and not self.dismiss_companies:
             print("ℹ️ No blocklists provided. Scraping only...")
         
@@ -850,6 +860,7 @@ class LinkedInScraper:
         total_reviewing = 0
         total_applied = 0
         total_viewed = 0
+        all_dismissed_jobs = []  # Collect for batch save
         
         # Resolve Location first
         geo_id = None
@@ -881,7 +892,7 @@ class LinkedInScraper:
             print(f"📊 Total jobs available: {total_jobs}")
         
         # Process Page 0
-        p, d, s, rep, easy, early, rev, app, view = self.process_page_result(page0_jobs)
+        (p, d, s, rep, easy, early, rev, app, view), dismissed_data = self.process_page_result(page0_jobs)
         total_processed += p
         total_dismissed += d
         total_skipped += s
@@ -891,6 +902,7 @@ class LinkedInScraper:
         total_reviewing += rev
         total_applied += app
         total_viewed += view
+        all_dismissed_jobs.extend(dismissed_data)
 
         # 2. Concurrent Fetch for remaining pages
         max_workers = 3
@@ -922,7 +934,7 @@ class LinkedInScraper:
                     try:
                         page_jobs, _ = future.result()
                         if page_jobs:
-                            p, d, s, rep, easy, early, rev, app, view = self.process_page_result(page_jobs)
+                            (p, d, s, rep, easy, early, rev, app, view), dismissed_data = self.process_page_result(page_jobs)
                             total_processed += p
                             total_dismissed += d
                             total_skipped += s
@@ -932,10 +944,16 @@ class LinkedInScraper:
                             total_reviewing += rev
                             total_applied += app
                             total_viewed += view
+                            all_dismissed_jobs.extend(dismissed_data)
                         else:
                             print(f"⚠️ Empty result for offset {start}")
                     except Exception as exc:
                         print(f"❌ Exception fetching offset {start}: {exc}")
+        
+        # 3. Batch Save all dismissed jobs to Supabase
+        if all_dismissed_jobs:
+            print(f"\n💾 Batch saving {len(all_dismissed_jobs)} dismissed jobs to Supabase...")
+            db.batch_save_dismissed_jobs(all_dismissed_jobs)
         
         print(f"\n✨ Done! Processed {total_processed} jobs. Dismissed {total_dismissed} jobs. Skipped {total_skipped}.")
         print(f"📊 Stats: Reposted: {total_reposted}, Easy: {total_easy}, Early: {total_early}, Reviewing: {total_reviewing}, Applied: {total_applied}, Viewed: {total_viewed}")

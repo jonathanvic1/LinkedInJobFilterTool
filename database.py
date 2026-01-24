@@ -78,6 +78,29 @@ class Database:
         except Exception as e:
             print(f"   ⚠️ DB Error (save_dismissed_job): {e}")
 
+    def batch_save_dismissed_jobs(self, jobs_data):
+        """Batch upsert multiple dismissed jobs at once."""
+        if not self.client or not jobs_data: return
+        
+        # Filter out None values and clean data
+        clean_data = [j for j in jobs_data if j and j.get('job_id')]
+        if not clean_data:
+            return
+            
+        try:
+            self.client.table("dismissed_jobs").upsert(clean_data).execute()
+            print(f"   ✅ Batch saved {len(clean_data)} jobs to Supabase")
+        except Exception as e:
+            print(f"   ⚠️ DB Error (batch_save_dismissed_jobs): {e}")
+            # Fallback: try individual saves
+            print("   🔄 Falling back to individual saves...")
+            for job in clean_data:
+                try:
+                    with self._lock:
+                        self.client.table("dismissed_jobs").upsert(job).execute()
+                except Exception as e2:
+                    print(f"      ⚠️ Failed to save {job.get('title')}: {e2}")
+
     def delete_dismissed_job(self, job_id):
         if not self.client: return False
         try:
