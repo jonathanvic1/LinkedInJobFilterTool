@@ -782,15 +782,24 @@ class LinkedInScraper:
             
             processed += 1
             
-            # Check if already processed/dismissed (Batch result)
-            if job_id in dismissed_ids:
-                skipped += 1
-                continue
-            
-            # Check LinkedIn-native dismissal (No need to re-dismiss)
+            # Check LinkedIn-native dismissal (No need to re-dismiss on LinkedIn, but sync to DB)
             if job.get('is_already_dismissed'):
-                # We count this as skipped because we don't need to do any work
-                skipped += 1
+                print(f"   📥 Syncing LinkedIn-native dismissal: '{title}'")
+                sync_data = {
+                    'job_id': job_id,
+                    'title': title,
+                    'company': company,
+                    'location': location,
+                    'reason': "linkedin_native_dismissal",
+                    'job_url': job_url,
+                    'company_linkedin': company_url,
+                    'is_reposted': is_reposted,
+                    'listed_at': listed_at,
+                    'user_id': self.user_id,
+                    'dismissed_at': datetime.now(timezone.utc).isoformat()
+                }
+                dismissed_jobs_data.append(sync_data)
+                dismissed += 1
                 continue
 
             location = job.get('location', None)
