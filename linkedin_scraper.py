@@ -12,7 +12,7 @@ from tqdm import tqdm
 from time import sleep
 from typing import List
 from database import db
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from curl_cffi import requests
 
 import concurrent.futures
@@ -154,7 +154,7 @@ class LinkedInScraper:
 
     def dismiss_job(self, job_id, title, company, location, dismiss_urn=None, reason=None, job_url=None, company_url=None, is_reposted=False, listed_at=None):
         """Dismiss a job using Voyager API. Returns job data dict if successful, None otherwise."""
-        print(f"🚫 Dismissing job: {title} at {company}...")
+        print(f"🚫 Dismissing job: {title} at {company} (ID: {job_id})...")
         
         # Construct payload
         # Use provided URN or construct it
@@ -185,6 +185,7 @@ class LinkedInScraper:
                     "company_linkedin": company_url,
                     "is_reposted": is_reposted,
                     "listed_at": listed_at,
+                    "dismissed_at": datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat(),
                     "user_id": self.user_id
                 }
             else:
@@ -582,13 +583,13 @@ class LinkedInScraper:
                     
                 # Extract Details from JobPostingCard
                 # Title
-                title = card.get('title', {}).get('text', 'Unknown')
+                title = card.get('title', {}).get('text', None)
                 
                 # Company (Primary Description)
-                company = card.get('primaryDescription', {}).get('text', 'Unknown')
+                company = card.get('primaryDescription', {}).get('text', None)
                 
                 # Location (Secondary Description)
-                location = card.get('secondaryDescription', {}).get('text', 'Unknown')
+                location = card.get('secondaryDescription', {}).get('text', None)
                 
                 # Job ID
                 # jobPostingUrn: "urn:li:fsd_jobPosting:4346967414"
@@ -621,7 +622,7 @@ class LinkedInScraper:
                              posting_data.get('listedAtTimestamp'))
                     if ts_ms:
                         try:
-                            dt = datetime.fromtimestamp(ts_ms / 1000)
+                            dt = datetime.fromtimestamp(ts_ms / 1000, timezone(timedelta(hours=-5)))
                             listed_at = dt.strftime('%Y-%m-%d %H:%M:%S')
                         except Exception: pass
 
@@ -639,8 +640,8 @@ class LinkedInScraper:
                         ts_ms = item.get('timeAt') or item.get('listedAt')
                         if ts_ms and not listed_at:
                             try:
-                                dt = datetime.fromtimestamp(ts_ms / 1000)
-                                listed_at = dt.strftime('%Y-%m-%d %H:%M:%S')
+                            dt = datetime.fromtimestamp(ts_ms / 1000, timezone(timedelta(hours=-5)))
+                            listed_at = dt.strftime('%Y-%m-%d %H:%M:%S')
                             except Exception: pass
                 
                 # Fallback 3: Aggressive deep search for 13-digit timestamps in the card
@@ -661,7 +662,7 @@ class LinkedInScraper:
                     deep_ts = find_ts(card)
                     if deep_ts:
                         try:
-                            dt = datetime.fromtimestamp(deep_ts / 1000)
+                            dt = datetime.fromtimestamp(deep_ts / 1000, timezone(timedelta(hours=-5)))
                             listed_at = dt.strftime('%Y-%m-%d %H:%M:%S')
                         except Exception: pass
                 
@@ -670,7 +671,7 @@ class LinkedInScraper:
                      ts_ms = card.get('relevanceInsight', {}).get('timeAt')
                      if ts_ms:
                          try:
-                             dt = datetime.fromtimestamp(ts_ms / 1000)
+                             dt = datetime.fromtimestamp(ts_ms / 1000, timezone(timedelta(hours=-5)))
                              listed_at = dt.strftime('%Y-%m-%d %H:%M:%S')
                          except Exception: pass
 
@@ -769,9 +770,9 @@ class LinkedInScraper:
         print(f"📝 Processing batch with {len(page_jobs)} jobs ({reposted} reposted, {easy} easy apply, {early} early)...")
 
         for job in tqdm(page_jobs, desc="Filtering Jobs", leave=False):
-            title = job.get('title', 'Unknown')
+            title = job.get('title', None)
             job_id = job.get('job_id')
-            company = job.get('company', 'Unknown')
+            company = job.get('company', None)
             
             processed += 1
             
@@ -780,7 +781,7 @@ class LinkedInScraper:
                 skipped += 1
                 continue
 
-            location = job.get('location', 'Unknown')
+            location = job.get('location', None)
             dismiss_urn = job.get('dismiss_urn')
             job_url = job.get('job_url')
             company_url = job.get('company_linkedin')

@@ -331,15 +331,15 @@ async function saveBlocklist(type) {
 
 // History
 function formatDateTime(dateStr) {
-    if (!dateStr) return 'N/A';
+    if (!dateStr) return 'NULL';
     try {
         const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return 'N/A';
+        if (isNaN(d.getTime())) return 'NULL';
         const date = d.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric' });
         const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         return `${date}<br>${time}`;
     } catch (e) {
-        return 'N/A';
+        return 'NULL';
     }
 }
 
@@ -722,12 +722,10 @@ function toggleCookieVisibility() {
 }
 
 // Blocklist Validation
-async function validateBlocklist(filename) {
-    const textareaId = filename === 'blocklist.txt' ? 'blocklist-titles' : 'blocklist-companies';
-    const content = document.getElementById(textareaId).value;
-    const items = content.split('\n').filter(line => line.trim() !== '');
+async function validateBlocklist(type) {
+    const items = blocklistState[type];
 
-    if (items.length === 0) {
+    if (!items || items.length === 0) {
         showToast("Blocklist is empty", true);
         return;
     }
@@ -846,7 +844,7 @@ async function exportHistory() {
 }
 
 function formatReason(reason) {
-    if (!reason) return 'Unknown';
+    if (!reason) return 'NULL';
     const map = {
         'job_title': 'Job Title',
         'company': 'Company',

@@ -1,6 +1,7 @@
 import os
 import threading
 from supabase import create_client, Client
+from datetime import datetime, timezone, timedelta
 
 class Database:
     _instance = None
@@ -67,7 +68,7 @@ class Database:
             "company_linkedin": company_url,
             "is_reposted": is_reposted,
             "listed_at": listed_at,
-            # dismissed_at defaults to NOW() in DB
+            "dismissed_at": datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat(),
         }
         if user_id:
             data["user_id"] = user_id
