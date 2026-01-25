@@ -103,17 +103,32 @@ class Database:
                     print(f"      ⚠️ Failed to save {job.get('title')}: {e2}")
 
     def get_unique_company_links(self, user_id=None):
-        """Fetch all unique company URLs from the dismissal history."""
+        """Fetch all unique company URLs from the dismissal history by paging through all records."""
         if not self.client: return []
         try:
-            # We fetch everything and deduplicate in Python for simplicity
-            query = self.client.table("dismissed_jobs").select("company_linkedin").limit(10000)
-            if user_id:
-                query = query.eq("user_id", user_id)
+            all_links = set()
+            offset = 0
+            page_size = 1000
             
-            response = query.execute()
-            links = {row['company_linkedin'] for row in response.data if row.get('company_linkedin')}
-            return list(links)
+            while True:
+                query = self.client.table("dismissed_jobs").select("company_linkedin").range(offset, offset + page_size - 1)
+                if user_id:
+                    query = query.eq("user_id", user_id)
+                
+                response = query.execute()
+                if not response.data:
+                    break
+                
+                for row in response.data:
+                    if row.get('company_linkedin'):
+                        all_links.add(row['company_linkedin'])
+                
+                if len(response.data) < page_size:
+                    break
+                
+                offset += page_size
+                
+            return list(all_links)
         except Exception as e:
             print(f"   ⚠️ DB Error (get_unique_company_links): {e}")
             return []

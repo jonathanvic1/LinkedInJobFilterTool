@@ -299,6 +299,7 @@ function addBlocklistItem(type) {
 function removeBlocklistItem(type, index) {
     blocklistState[type].splice(index, 1);
     renderBlocklist(type);
+    saveBlocklist(type); // Auto-save on deletion
 }
 
 function editBlocklistItem(type, index, newValue) {
@@ -982,6 +983,7 @@ function showOptimizationResults(type, redundant, sourceMap) {
 
             blocklistState[type] = blocklistState[type].filter(item => !checked.includes(item));
             renderBlocklist(type);
+            saveBlocklist(type); // Auto-save after optimization
             closeOptimizationModal();
             showToast(`Removed ${checked.length} items`);
         };
