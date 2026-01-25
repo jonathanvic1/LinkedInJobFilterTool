@@ -80,7 +80,7 @@ class Database:
             print(f"   ⚠️ DB Error (save_dismissed_job): {e}")
 
     def batch_save_dismissed_jobs(self, jobs_data):
-        """Batch upsert multiple dismissed jobs at once."""
+        """Save multiple dismissed jobs to Supabase individually for maximum reliability and visibility."""
         if not self.client or not jobs_data: return
         
         # Filter out None values and clean data
@@ -88,19 +88,24 @@ class Database:
         if not clean_data:
             return
             
-        try:
-            self.client.table("dismissed_jobs").upsert(clean_data).execute()
-            print(f"   ✅ Batch saved {len(clean_data)} jobs to Supabase")
-        except Exception as e:
-            print(f"   ⚠️ DB Error (batch_save_dismissed_jobs): {e}")
-            # Fallback: try individual saves
-            print("   🔄 Falling back to individual saves...")
-            for job in clean_data:
-                try:
-                    with self._lock:
-                        self.client.table("dismissed_jobs").upsert(job).execute()
-                except Exception as e2:
-                    print(f"      ⚠️ Failed to save {job.get('title')}: {e2}")
+        print(f"   💾 Saving {len(clean_data)} jobs to Supabase history one-by-one...")
+        
+        success_count = 0
+        for job in clean_data:
+            title = job.get('title', 'Unknown Title')
+            job_id = job.get('job_id')
+            try:
+                with self._lock:
+                    self.client.table("dismissed_jobs").upsert(job).execute()
+                print(f"      ✅ Saved: {title} (ID: {job_id})")
+                success_count += 1
+            except Exception as e:
+                print(f"      ❌ Failed to save {title}: {e}")
+        
+        if success_count == len(clean_data):
+            print(f"   ✨ All {len(clean_data)} jobs successfully recorded in history.")
+        else:
+            print(f"   📊 Saved {success_count}/{len(clean_data)} jobs to history.")
 
     def get_unique_company_links(self, user_id=None):
         """Fetch all unique company URLs from the dismissal history by paging through all records."""
