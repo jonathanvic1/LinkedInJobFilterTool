@@ -790,13 +790,12 @@ class LinkedInScraper:
                     'title': title,
                     'company': company,
                     'location': location,
-                    'reason': "linkedin_native_dismissal",
-                    'job_url': job_url,
+                    'dismiss_reason': "linkedin_native_dismissal",
                     'company_linkedin': company_url,
                     'is_reposted': is_reposted,
                     'listed_at': listed_at,
                     'user_id': self.user_id,
-                    'dismissed_at': datetime.now(timezone.utc).isoformat()
+                    'dismissed_at': datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
                 }
                 dismissed_jobs_data.append(sync_data)
                 dismissed += 1
