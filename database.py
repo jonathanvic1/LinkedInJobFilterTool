@@ -107,7 +107,7 @@ class Database:
         if not self.client: return []
         try:
             # We fetch everything and deduplicate in Python for simplicity
-            query = self.client.table("dismissed_jobs").select("company_linkedin")
+            query = self.client.table("dismissed_jobs").select("company_linkedin").limit(10000)
             if user_id:
                 query = query.eq("user_id", user_id)
             

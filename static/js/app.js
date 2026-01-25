@@ -869,6 +869,13 @@ async function optimizeBlocklist(type) {
     let redundant = [];
     const sourceMap = {};
 
+    const normalizeUrl = (url) => {
+        if (!url) return "";
+        return url.toLowerCase().trim()
+            .replace(/^https?:\/\//, '') // remove protocol
+            .replace(/\/$/, ''); // remove trailing slash
+    };
+
     if (type === 'job_title') {
         // Redundant item: if A is a substring of B, B is redundant.
         const sorted = [...list].sort((a, b) => a.length - b.length);
@@ -890,9 +897,12 @@ async function optimizeBlocklist(type) {
             const res = await apiFetch('/api/history/unique_companies');
             if (!res.ok) throw new Error("Failed to fetch unique company links");
             const historyLinks = await res.json();
-            const historySet = new Set(historyLinks.map(l => l.toLowerCase()));
+            const historySet = new Set(historyLinks.map(l => normalizeUrl(l)));
 
-            redundant = list.filter(link => !historySet.has(link.toLowerCase()));
+            redundant = list.filter(link => {
+                const norm = normalizeUrl(link);
+                return norm !== "" && !historySet.has(norm);
+            });
             redundant.forEach(link => {
                 sourceMap[link] = "Not found in your history";
             });
