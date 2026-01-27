@@ -133,7 +133,7 @@ class LinkedInScraper:
 
     def log_error(self, error: str):
         """Log error messages to console (Vercel safe)."""
-        print(f"[{datetime.now()}] ERROR {error}")
+        print(f"[{datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0)}] ERROR {error}")
         # with open("logs/error.log", "a", encoding='utf-8') as f:
         #     f.write(f"{datetime.now()} ERROR {error}\n")
     
@@ -287,7 +287,7 @@ class LinkedInScraper:
 
     def log_info(self, info: str):
         """Log info messages to console (Vercel safe)."""
-        print(f"[{datetime.now()}] INFO {info}")
+        print(f"[{datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0)}] INFO {info}")
         # with open("logs/info.log", "a", encoding='utf-8') as f:
         #     f.write(f"{datetime.now()} INFO {info}\n")
             

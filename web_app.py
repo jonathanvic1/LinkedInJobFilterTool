@@ -2,7 +2,7 @@ import sys
 import os
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from database import db
 import uvicorn
 import subprocess
@@ -445,7 +445,7 @@ def export_history(request: Request):
     return StreamingResponse(
         output,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=history_export_{datetime.now().strftime('%Y%m%d')}.csv"}
+        headers={"Content-Disposition": f"attachment; filename=history_export_{datetime.now(timezone(timedelta(hours=-5))).strftime('%Y%m%d')}.csv"}
     )
 
 @app.get("/api/geo_cache")

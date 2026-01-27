@@ -466,7 +466,7 @@ class Database:
                 "linkedin_cookie": linkedin_cookie,
                 "page_delay": page_delay,
                 "job_delay": job_delay,
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "updated_at": datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
             }
             self.client.table("user_settings").upsert(data).execute()
             return True
