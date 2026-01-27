@@ -8,6 +8,7 @@ Uses curl_cffi with Chrome 136 impersonation and authenticated cookies to query 
 
 import os
 import urllib.parse
+import difflib
 from tqdm import tqdm
 from time import sleep
 from typing import List
@@ -93,7 +94,7 @@ class LinkedInScraper:
         
         # Update headers
         self.session.headers.update(HEADERS)
-        if self.csrf_token:
+        if hasattr(self, 'csrf_token') and self.csrf_token:
             self.session.headers.update({'csrf-token': self.csrf_token})
         
         print("🔧 Initialized scraper with curl_cffi Chrome 136 impersonation and Authenticated Session")
@@ -848,12 +849,21 @@ class LinkedInScraper:
                     desc_new = self.fetch_job_description(job_id)
                     desc_old = self.fetch_job_description(dup_id)
                     
-                    if desc_new and desc_old and desc_new.strip() == desc_old.strip():
-                        should_dismiss = True
-                        dismiss_reason = f"duplicate_description:matched_{dup_id}"
-                        print(f"   🚫 Text descriptions match! Deduplicating...")
+                    if desc_new and desc_old:
+                        desc_new_clean = desc_new.strip()
+                        desc_old_clean = desc_old.strip()
+                        
+                        # Use SequenceMatcher for fuzzy comparison
+                        similarity = difflib.SequenceMatcher(None, desc_new_clean, desc_old_clean).ratio()
+                        
+                        if similarity >= 0.95: # 95% similarity threshold
+                            should_dismiss = True
+                            dismiss_reason = f"duplicate_description:matched_{dup_id}_sim_{similarity:.3f}"
+                            print(f"   🚫 Text descriptions are {similarity*100:.1f}% similar! Deduplicating...")
+                        else:
+                            print(f"   ✅ Descriptions differ (similarity: {similarity*100:.1f}%). Not a duplicate.")
                     else:
-                        print(f"   ✅ Descriptions differ. Not a duplicate.")
+                        print(f"   ⚠️ Could not fetch one or both descriptions for comparison.")
             
             # 4. Perform Dismissal on LinkedIn
             if should_dismiss:
