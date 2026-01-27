@@ -1,4 +1,6 @@
 import os
+import time
+import random
 import threading
 from supabase import create_client, Client
 from datetime import datetime, timezone, timedelta
@@ -11,6 +13,8 @@ class Database:
         if cls._instance is None:
             cls._instance = super(Database, cls).__new__(cls)
             cls._instance._init_client()
+            cls._instance._dup_cache = {}  # Cache for get_earliest_duplicate
+            cls._instance._dup_cache_lock = threading.Lock()
         return cls._instance
     
     def _init_client(self):
@@ -28,7 +32,24 @@ class Database:
                 print(f"✅ Supabase client initialized ({'Service Role' if is_service else 'Anon/Standard Key'})")
             except Exception as e:
                 print(f"❌ Failed to initialize Supabase: {e}")
-                self.client = None
+
+    def _retry_request(self, func, *args, max_retries=3, initial_delay=0.5, **kwargs):
+        """Generic retry wrapper with exponential backoff and jitter."""
+        for i in range(max_retries):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                err_msg = str(e).lower()
+                # Check for transient errors or Cloudflare/Supabase connection limits
+                is_transient = any(kw in err_msg for kw in ["terminated", "timeout", "502", "503", "504", "429", "batch"])
+                
+                if i < max_retries - 1 and is_transient:
+                    delay = initial_delay * (2 ** i) + random.uniform(0, 0.1)
+                    print(f"   ⚠️ DB Request failed (try {i+1}/{max_retries}): {e}. Retrying in {delay:.1f}s...")
+                    time.sleep(delay)
+                else:
+                    raise e
+        return None
 
     def is_job_dismissed(self, job_id, user_id=None):
         if not self.client: return False
@@ -45,17 +66,20 @@ class Database:
     def get_dismissed_job_ids(self, job_ids, user_id=None):
         """Batch check if jobs are dismissed."""
         if not self.client or not job_ids: return set()
-        try:
-            # PostgREST in_ expects parens or strict formatting, but Supabase-py handles list directly often.
-            # However, for safety, let's pass list directly.
+        
+        def _execute():
             query = self.client.table("dismissed_jobs").select("job_id").in_("job_id", job_ids)
             if user_id:
                 query = query.eq("user_id", user_id)
-            response = query.execute()
-            return {row['job_id'] for row in response.data}
+            return query.execute()
+
+        try:
+            response = self._retry_request(_execute)
+            if response and response.data:
+                return {row['job_id'] for row in response.data}
         except Exception as e:
-            print(f"⚠️ DB Error (get_dismissed_job_ids): {e}")
-            return set()
+            print(f"   ⚠️ DB Error (get_dismissed_job_ids): {e}")
+        return set()
 
     def save_dismissed_job(self, job_id, title, company, location, reason, job_url, company_url, is_reposted=False, listed_at=None, user_id=None):
         if not self.client: return
@@ -72,9 +96,13 @@ class Database:
         }
         if user_id:
             data["user_id"] = user_id
+            
+        def _execute():
+            return self.client.table("dismissed_jobs").upsert(data).execute()
+
         try:
             with self._lock:  # Thread-safe write
-                self.client.table("dismissed_jobs").upsert(data).execute()
+                self._retry_request(_execute)
             print(f"   💾 Saved to Supabase: {title}")
         except Exception as e:
             print(f"   ⚠️ DB Error (save_dismissed_job): {e}")
@@ -94,9 +122,13 @@ class Database:
         for job in clean_data:
             title = job.get('title', 'Unknown Title')
             job_id = job.get('job_id')
+            
+            def _execute():
+                return self.client.table("dismissed_jobs").upsert(job).execute()
+
             try:
                 with self._lock:
-                    self.client.table("dismissed_jobs").upsert(job).execute()
+                    self._retry_request(_execute)
                 print(f"      ✅ Saved: {title} (ID: {job_id})")
                 success_count += 1
             except Exception as e:
@@ -150,9 +182,13 @@ class Database:
 
     def get_geo_cache(self, query):
         if not self.client: return None
+        
+        def _execute():
+            return self.client.table("geo_cache").select("*").eq("location_query", query.strip().title()).execute()
+
         try:
-            response = self.client.table("geo_cache").select("*").eq("location_query", query.strip().title()).execute()
-            if response.data:
+            response = self._retry_request(_execute)
+            if response and response.data:
                 return response.data[0]
         except Exception as e:
             print(f"   ⚠️ DB Error (get_geo_cache): {e}")
@@ -296,19 +332,34 @@ class Database:
 
     def get_earliest_duplicate(self, title, company):
         if not self.client: return None
-        try:
-            # Supabase Python client currently doesn't support complex ordering in a simple way as robustly as SQL
-            # But .order('listed_at', desc=False) works
-            response = self.client.table("dismissed_jobs")\
+        
+        # 1. Check local cache first
+        cache_key = (title.lower().strip(), company.lower().strip() if company else "")
+        with self._dup_cache_lock:
+            if cache_key in self._dup_cache:
+                return self._dup_cache[cache_key]
+
+        def _execute():
+            return self.client.table("dismissed_jobs")\
                 .select("job_id")\
                 .eq("title", title)\
                 .eq("company", company)\
                 .order("listed_at", desc=False)\
                 .limit(1)\
                 .execute()
+        
+        try:
+            response = self._retry_request(_execute)
             
-            if response.data:
-                return response.data[0]['job_id']
+            job_id = None
+            if response and response.data:
+                job_id = response.data[0]['job_id']
+            
+            # 2. Update cache
+            with self._dup_cache_lock:
+                self._dup_cache[cache_key] = job_id
+            return job_id
+            
         except Exception as e:
              print(f"   ⚠️ DB Error (get_earliest_duplicate): {e}")
         return None
@@ -418,15 +469,20 @@ class Database:
     def get_blocklist(self, name, user_id=None):
         """Fetch blocklist items by name ('job_title' or 'company_linkedin')"""
         if not self.client: return []
-        try:
+        
+        def _execute():
             query = self.client.table("blocklists").select("item").eq("blocklist_type", name)
             if user_id:
                 query = query.eq("user_id", user_id)
-            res = query.execute()
-            return [row['item'] for row in res.data]
+            return query.execute()
+
+        try:
+            res = self._retry_request(_execute)
+            if res and res.data:
+                return [row['item'] for row in res.data]
         except Exception as e:
             print(f"⚠️ DB Error (get_blocklist {name}): {e}")
-            return []
+        return []
 
     def update_blocklist(self, name, items, user_id=None):
         """Replace the entire blocklist for a given name."""
@@ -445,13 +501,18 @@ class Database:
                     self.client.table("blocklists").insert(rows).execute()
         except Exception as e:
             print(f"⚠️ DB Error (update_blocklist {name}): {e}")
+            return []
 
     def get_user_settings(self, user_id):
         """Fetch user settings including LinkedIn cookie."""
         if not self.client or not user_id: return None
+        
+        def _execute():
+            return self.client.table("user_settings").select("*").eq("user_id", user_id).execute()
+
         try:
-            response = self.client.table("user_settings").select("*").eq("user_id", user_id).execute()
-            if response.data:
+            response = self._retry_request(_execute)
+            if response and response.data:
                 return response.data[0]
         except Exception as e:
             print(f"⚠️ DB Error (get_user_settings): {e}")
