@@ -756,18 +756,114 @@ class LinkedInScraper:
             self.log_error(f"Error fetching page {start}: {e}")
             return [], 0
 
+    def _process_single_job(self, job, dismissed_ids):
+        """Processes a single job candidate. Returns (job_data or None, is_dismissed, is_skipped)."""
+        title = job.get('title', None)
+        job_id = job.get('job_id')
+        company = job.get('company', None)
+        location = job.get('location', None)
+        dismiss_urn = job.get('dismiss_urn')
+        job_url = job.get('job_url')
+        company_url = job.get('company_linkedin')
+        is_reposted = job.get('is_reposted', False)
+        listed_at = job.get('listed_at')
+        
+        # 1. Check if already in OUR database (Skipped)
+        if job_id in dismissed_ids:
+            return None, False, True
+        
+        # 2. Check LinkedIn-native dismissal (Sync to DB if not present)
+        if job.get('is_already_dismissed'):
+            print(f"   📥 Syncing LinkedIn-native dismissal: '{title}'")
+            sync_data = {
+                'job_id': job_id,
+                'title': title,
+                'company': company,
+                'location': location,
+                'dismiss_reason': "linkedin_native_dismissal",
+                'company_linkedin': company_url,
+                'is_reposted': is_reposted,
+                'listed_at': listed_at,
+                'user_id': self.user_id,
+                'dismissed_at': datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
+            }
+            return sync_data, True, False
+            
+        # 3. Regular Filtering logic...
+        should_dismiss = False
+        dismiss_reason = None
+        
+        # Check Title Blocklist
+        for keyword in self.dismiss_titles:
+            # Use regex with word boundaries to avoid false positives (e.g. "Intern" matching "Internal")
+            pattern = rf"\b{re.escape(keyword.lower())}\b"
+            if re.search(pattern, title.lower()):
+                should_dismiss = True
+                dismiss_reason = "job_title" 
+                print(f"   🔍 Match found: '{keyword}' in Title: '{title}'")
+                break
+        
+        # Check Company Blocklist
+        if not should_dismiss:
+            for keyword in self.dismiss_companies:
+                if company_url and keyword.lower() in company_url.lower():
+                    should_dismiss = True
+                    dismiss_reason = "company"
+                    print(f"   🔍 Match found: '{keyword}' in Company URL: '{company_url}'")
+                    break
+        
+        # Check Auto-Dismiss for Applied Jobs
+        if not should_dismiss and job.get('is_applied'):
+            should_dismiss = True
+            dismiss_reason = "applied"
+            print(f"   🚫 Auto-dismissing already applied job: '{title}'")
+            
+        # Description-Based Deduplication
+        if not should_dismiss:
+            dup_id = self.get_earliest_duplicate_job_id(title, company)
+            if dup_id and dup_id != job_id:
+                print(f"   🤔 Found potential duplicate in DB (ID: {dup_id}). Comparing descriptions...")
+                if self.job_delay > 0: sleep(self.job_delay)
+                desc_new = self.fetch_job_description(job_id)
+                desc_old = self.fetch_job_description(dup_id)
+                
+                if desc_new and desc_old:
+                    desc_new_clean = desc_new.strip()
+                    desc_old_clean = desc_old.strip()
+                    
+                    # Use SequenceMatcher for fuzzy comparison
+                    similarity = difflib.SequenceMatcher(None, desc_new_clean, desc_old_clean).ratio()
+                    
+                    if similarity >= 0.95: # 95% similarity threshold
+                        should_dismiss = True
+                        dismiss_reason = "duplicate_description"
+                        print(f"   🚫 Text descriptions are {similarity*100:.1f}% similar! Deduplicating...")
+                    else:
+                        print(f"   ✅ Descriptions differ (similarity: {similarity*100:.1f}%). Not a duplicate.")
+                else:
+                    print(f"   ⚠️ Could not fetch one or both descriptions for comparison.")
+        
+        # 4. Perform Dismissal on LinkedIn
+        if should_dismiss:
+            if self.job_delay > 0: sleep(self.job_delay)
+            job_data = self.dismiss_job(job_id, title, company, location, dismiss_urn, reason=dismiss_reason, job_url=job_url, company_url=company_url, is_reposted=is_reposted, listed_at=listed_at)
+            if job_data:
+                return job_data, True, False
+        
+        return None, False, False
+
     def process_page_result(self, page_jobs):
-        """Process a single page of results. Returns (stats_tuple, list_of_dismissed_job_dicts)."""
+        """Process a single page of results using concurrency. Returns (stats_tuple, list_of_dismissed_job_dicts)."""
         if not page_jobs: return (0, 0, 0, 0, 0, 0, 0, 0, 0), []
 
-        processed = dismissed = skipped = reposted = easy = early = reviewing = applied = viewed = 0
+        processed = dismissed = skipped = 0
         dismissed_jobs_data = []  # Collect for batch save
         
         # Batch check dismissal
         job_ids = [j.get('job_id') for j in page_jobs if j.get('job_id')]
         dismissed_ids = db.get_dismissed_job_ids(job_ids, self.user_id) if job_ids else set()
 
-        # Stats for this page
+        # Static Stats for this page
         reposted = sum(1 for j in page_jobs if j.get('is_reposted'))
         easy = sum(1 for j in page_jobs if j.get('is_easy_apply'))
         early = sum(1 for j in page_jobs if j.get('is_early_applicant'))
@@ -777,104 +873,25 @@ class LinkedInScraper:
         
         print(f"📝 Processing batch with {len(page_jobs)} jobs ({reposted} reposted, {easy} easy apply, {early} early)...")
 
-        for job in tqdm(page_jobs, desc="Filtering Jobs", leave=False):
-            title = job.get('title', None)
-            job_id = job.get('job_id')
-            company = job.get('company', None)
-            location = job.get('location', None)
-            dismiss_urn = job.get('dismiss_urn')
-            job_url = job.get('job_url')
-            company_url = job.get('company_linkedin')
-            is_reposted = job.get('is_reposted', False)
-            listed_at = job.get('listed_at')
+        # Concurrent Dismissal with 2 workers
+        max_workers = 2
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_job = {executor.submit(self._process_single_job, job, dismissed_ids): job for job in page_jobs}
             
-            processed += 1
-            
-            # 1. Check if already in OUR database (Skipped)
-            if job_id in dismissed_ids:
-                skipped += 1
-                continue
-            
-            # 2. Check LinkedIn-native dismissal (Sync to DB if not present)
-            if job.get('is_already_dismissed'):
-                print(f"   📥 Syncing LinkedIn-native dismissal: '{title}'")
-                sync_data = {
-                    'job_id': job_id,
-                    'title': title,
-                    'company': company,
-                    'location': location,
-                    'dismiss_reason': "linkedin_native_dismissal",
-                    'company_linkedin': company_url,
-                    'is_reposted': is_reposted,
-                    'listed_at': listed_at,
-                    'user_id': self.user_id,
-                    'dismissed_at': datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
-                }
-                dismissed_jobs_data.append(sync_data)
-                dismissed += 1
-                continue
-                
-            # 3. Regular Filtering logic...
-            should_dismiss = False
-            dismiss_reason = None
-            
-            # Check Title Blocklist
-            for keyword in self.dismiss_titles:
-                # Use regex with word boundaries to avoid false positives (e.g. "Intern" matching "Internal")
-                pattern = rf"\b{re.escape(keyword.lower())}\b"
-                if re.search(pattern, title.lower()):
-                    should_dismiss = True
-                    dismiss_reason = "job_title" 
-                    print(f"   🔍 Match found: '{keyword}' in Title: '{title}'")
-                    break
-            
-            # Check Company Blocklist
-            if not should_dismiss:
-                for keyword in self.dismiss_companies:
-                    if company_url and keyword.lower() in company_url.lower():
-                        should_dismiss = True
-                        dismiss_reason = "company"
-                        print(f"   🔍 Match found: '{keyword}' in Company URL: '{company_url}'")
-                        break
-            
-            # Check Auto-Dismiss for Applied Jobs
-            if not should_dismiss and job.get('is_applied'):
-                should_dismiss = True
-                dismiss_reason = "applied"
-                print(f"   🚫 Auto-dismissing already applied job: '{title}'")
-                
-            # Description-Based Deduplication
-            if not should_dismiss:
-                dup_id = self.get_earliest_duplicate_job_id(title, company)
-                if dup_id and dup_id != job_id:
-                    print(f"   🤔 Found potential duplicate in DB (ID: {dup_id}). Comparing descriptions...")
-                    if self.job_delay > 0: sleep(self.job_delay)
-                    desc_new = self.fetch_job_description(job_id)
-                    desc_old = self.fetch_job_description(dup_id)
-                    
-                    if desc_new and desc_old:
-                        desc_new_clean = desc_new.strip()
-                        desc_old_clean = desc_old.strip()
-                        
-                        # Use SequenceMatcher for fuzzy comparison
-                        similarity = difflib.SequenceMatcher(None, desc_new_clean, desc_old_clean).ratio()
-                        
-                        if similarity >= 0.95: # 95% similarity threshold
-                            should_dismiss = True
-                            dismiss_reason = "duplicate_description"
-                            print(f"   🚫 Text descriptions are {similarity*100:.1f}% similar! Deduplicating...")
-                        else:
-                            print(f"   ✅ Descriptions differ (similarity: {similarity*100:.1f}%). Not a duplicate.")
-                    else:
-                        print(f"   ⚠️ Could not fetch one or both descriptions for comparison.")
-            
-            # 4. Perform Dismissal on LinkedIn
-            if should_dismiss:
-                if self.job_delay > 0: sleep(self.job_delay)
-                job_data = self.dismiss_job(job_id, title, company, location, dismiss_urn, reason=dismiss_reason, job_url=job_url, company_url=company_url, is_reposted=is_reposted, listed_at=listed_at)
-                if job_data:
-                    dismissed += 1
-                    dismissed_jobs_data.append(job_data)
+            # Using progress bar while aggregating results
+            for future in tqdm(concurrent.futures.as_completed(future_to_job), total=len(page_jobs), desc="Filtering Jobs", leave=False):
+                processed += 1
+                try:
+                    job_data, is_dismissed, is_skipped = future.result()
+                    if is_skipped:
+                        skipped += 1
+                    if is_dismissed:
+                        dismissed += 1
+                        if job_data:
+                            dismissed_jobs_data.append(job_data)
+                except Exception as exc:
+                    job_info = future_to_job[future]
+                    print(f"❌ Exception processing job {job_info.get('title')} (ID: {job_info.get('job_id')}): {exc}")
         
         return (processed, dismissed, skipped, reposted, easy, early, reviewing, applied, viewed), dismissed_jobs_data
 
