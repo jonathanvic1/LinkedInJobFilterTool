@@ -7,6 +7,7 @@ Uses curl_cffi with Chrome 136 impersonation and authenticated cookies to query 
 """
 
 import os
+import re
 import urllib.parse
 import difflib
 from tqdm import tqdm
@@ -819,7 +820,9 @@ class LinkedInScraper:
             
             # Check Title Blocklist
             for keyword in self.dismiss_titles:
-                if keyword.lower() in title.lower():
+                # Use regex with word boundaries to avoid false positives (e.g. "Intern" matching "Internal")
+                pattern = rf"\b{re.escape(keyword.lower())}\b"
+                if re.search(pattern, title.lower()):
                     should_dismiss = True
                     dismiss_reason = "job_title" 
                     print(f"   🔍 Match found: '{keyword}' in Title: '{title}'")

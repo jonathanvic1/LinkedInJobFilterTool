@@ -883,9 +883,10 @@ async function optimizeBlocklist(type) {
         const sorted = [...list].sort((a, b) => a.length - b.length);
         for (let i = 0; i < sorted.length; i++) {
             const broad = sorted[i].toLowerCase();
+            const pattern = new RegExp(`\\b${broad.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
             for (let j = i + 1; j < sorted.length; j++) {
                 const specific = sorted[j].toLowerCase();
-                if (specific.includes(broad)) {
+                if (pattern.test(specific)) {
                     if (!redundant.includes(sorted[j])) {
                         redundant.push(sorted[j]);
                         sourceMap[sorted[j]] = `Covered by "${sorted[i]}"`;
