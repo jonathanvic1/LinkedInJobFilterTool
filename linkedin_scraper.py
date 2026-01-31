@@ -55,7 +55,8 @@ class LinkedInScraper:
                  user_id: str = None,
                  cookie_string: str = None,
                  page_delay: float = 2.0,
-                 job_delay: float = 1.0):
+                 job_delay: float = 1.0,
+                 history_id: str = None):
         self.keywords = keywords
         self.location = location
         self.limit_jobs = limit_jobs
@@ -63,6 +64,7 @@ class LinkedInScraper:
         self.cookie_string = cookie_string
         self.page_delay = page_delay
         self.job_delay = job_delay
+        self.history_id = history_id
         self.dismiss_titles = [k.lower().strip() for k in dismiss_keywords if k and k.strip()] if dismiss_keywords else []
         
         # Sanitize company inputs (extract slug from URL if present)
@@ -97,6 +99,17 @@ class LinkedInScraper:
         self.session.headers.update(HEADERS)
         if hasattr(self, 'csrf_token') and self.csrf_token:
             self.session.headers.update({'csrf-token': self.csrf_token})
+
+    def log(self, message: str, level: str = 'info'):
+        """Print log to console and optionally persist to DB."""
+        # Console output
+        timestamp = datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0)
+        prefix = "❌" if level == 'error' else "⚠️" if level == 'warning' else "✅" if level == 'success' else "ℹ️"
+        print(f"[{timestamp}] {prefix} {message}")
+        
+        # Persistent DB output
+        if self.history_id:
+             db.log_search_event(self.history_id, message, level)
         
         print("🔧 Initialized scraper with curl_cffi Chrome 136 impersonation and Authenticated Session")
 
@@ -126,14 +139,15 @@ class LinkedInScraper:
         # Extract JSESSIONID for CSRF token
         self.csrf_token = cookies.get('JSESSIONID')
         if not self.csrf_token:
-                print("⚠️  Warning: JSESSIONID not found in cookies. Requests might fail.")
+                self.log("Warning: JSESSIONID not found in cookies. Requests might fail.", level='warning')
         if self.csrf_token:
             # CSRF token loaded stealthily
             pass
 
-    def log_error(self, error: str):
-        """Log error messages to console (Vercel safe)."""
-        print(f"[{datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0)}] ERROR {error}")
+    def handle_api_error(self, response: requests.Response, error: str):
+        self.log(f"API ERROR: {error}", level='error')
+        if response.status_code == 401:
+            self.log("Session expired. Please update cookies.", level='warning')
         # with open("logs/error.log", "a", encoding='utf-8') as f:
         #     f.write(f"{datetime.now()} ERROR {error}\n")
     
@@ -156,15 +170,12 @@ class LinkedInScraper:
 
     def dismiss_job(self, job_id, title, company, location, dismiss_urn=None, reason=None, job_url=None, company_url=None, is_reposted=False, listed_at=None):
         """Dismiss a job using Voyager API. Returns job data dict if successful, None otherwise."""
-        print(f"🚫 Dismissing job: {title} at {company} (ID: {job_id})...")
-        
-        # Construct payload
-        # Use provided URN or construct it
-        urn = dismiss_urn if dismiss_urn else f"urn:li:fsd_jobPostingRelevanceFeedback:urn:li:fsd_jobPosting:{job_id}"
+        self.log(f"Dismissing job: {title} at {company} (ID: {job_id})...")
         
         payload = {
-            "jobPostingRelevanceFeedbackUrn": urn,
-            "channel": "JOB_SEARCH"
+            "feedbackType": "NOT_INTERESTED",
+            "jobPostingUrn": f"urn:li:fs_normalized_jobPosting:{job_id}",
+            "jobPostingCardUrn": dismiss_urn
         }
         
         try:
@@ -176,7 +187,7 @@ class LinkedInScraper:
             )
             
             if response.status_code in [200, 201, 204]:
-                print(f"   ✅ Successfully dismissed on LinkedIn")
+                self.log(f"Successfully dismissed on LinkedIn: {title}", level='success')
                 # Return job data for batch save later
                 return {
                     "job_id": job_id,
@@ -191,16 +202,16 @@ class LinkedInScraper:
                     "user_id": self.user_id
                 }
             else:
-                print(f"   ❌ Failed to dismiss on LinkedIn: {response.status_code}")
+                self.log(f"Failed to dismiss on LinkedIn: {response.status_code}", level='error')
                 return None
                 
         except Exception as e:
-            print(f"   ❌ Error dismissing job: {e}")
+            self.log(f"Error dismissing job: {e}", level='error')
             return None
             
     def undo_dismiss(self, job_id):
         """Undo dismissal of a job using Voyager API and remove from DB."""
-        print(f"🔄 Undoing dismissal for Job ID: {job_id}...")
+        self.log(f"Undoing dismissal for Job ID: {job_id}...")
         
         # Construct payload
         # Reconstruct URN from ID
@@ -221,16 +232,16 @@ class LinkedInScraper:
             )
             
             if response.status_code in [200, 201, 204]:
-                print(f"   ✅ Successfully restored job on LinkedIn")
+                self.log(f"Successfully restored job on LinkedIn", level='success')
                 self.delete_dismissed_job(job_id)
                 return True
             else:
-                print(f"   ❌ Failed to restore on LinkedIn: {response.status_code}")
-                # print(f"   {response.text[:200]}") # Less verbose
+                self.log(f"Failed to restore on LinkedIn: {response.status_code}", level='error')
+                # self.log(f"   {response.text[:200]}") # Less verbose
                 return False
                 
         except Exception as e:
-            print(f"   ❌ Error restoring job: {e}")
+            self.log(f"Error restoring job: {e}", level='error')
             return False
 
     def fetch_job_description(self, job_id):
@@ -247,7 +258,7 @@ class LinkedInScraper:
         
         full_url = f"{url}?variables={variables_str}&queryId={query_id}"
         
-        print(f"   📄 Fetching description for Job {job_id}...")
+        self.log(f"Fetching description for Job {job_id}...")
         
         try:
             response = self.session.get(
@@ -270,14 +281,14 @@ class LinkedInScraper:
                             if desc_text:
                                 return desc_text
                                 
-                    print(f"   ⚠️ Description URN {target_urn} not found in response.")
+                    self.log(f"Description URN {target_urn} not found in response.", level='warning')
                 except Exception as e:
-                    print(f"   ⚠️ Error parsing description: {e}")
+                    self.log(f"Error parsing description: {e}", level='warning')
             else:
-                print(f"   ⚠️ Failed to fetch description: {response.status_code}")
+                self.log(f"Failed to fetch description: {response.status_code}", level='warning')
                 
         except Exception as e:
-            print(f"   ⚠️ Error requesting description: {e}")
+            self.log(f"Error requesting description: {e}", level='warning')
             
         return None
 
@@ -287,7 +298,7 @@ class LinkedInScraper:
 
     def log_info(self, info: str):
         """Log info messages to console (Vercel safe)."""
-        print(f"[{datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0)}] INFO {info}")
+        self.log(info)
         # with open("logs/info.log", "a", encoding='utf-8') as f:
         #     f.write(f"{datetime.now()} INFO {info}\n")
             
@@ -335,24 +346,24 @@ class LinkedInScraper:
 
                 return candidates
             else:
-                print(f"   ⚠️ Error fetching clusters: Status {response.status_code}")
+                self.log(f"Error fetching clusters: Status {response.status_code}", level='warning')
         except Exception as e:
-            print(f"   ⚠️ Exception fetching clusters: {e}")
+            self.log(f"Exception fetching clusters: {e}", level='warning')
         return []
 
     def refine_location(self, location_name, master_geo_id):
         """Step 2: Refine Master GeoID to specific Populated Place ID."""
-        print(f"   🔍 Refine: Fetching populated places for GeoID {master_geo_id}...")
+        self.log(f"Refine: Fetching populated places for GeoID {master_geo_id}...")
         
         # Check geo_candidates cache first
         candidates = db.get_geo_candidates(master_geo_id)
         if candidates:
-             print(f"   📍 Geo Candidates cache hit for {master_geo_id}")
+             self.log(f"Geo Candidates cache hit for {master_geo_id}")
         else:
              candidates = self.get_filter_clusters(master_geo_id) # Fallback to API call
 
         if not candidates:
-            print("   ⚠️ No populated places found. Using Master GeoID.")
+            self.log("No populated places found. Using Master GeoID.", level='warning')
             return master_geo_id, None
             
         # Match Logic
@@ -381,15 +392,15 @@ class LinkedInScraper:
                     break # Take the first valid city match (usually sorted by relevance)
         
         if best_match:
-            print(f"   ✅ Refined to: {best_match['name']} ({best_match['id']})")
+            self.log(f"Refined to: {best_match['name']} ({best_match['id']})", level='success')
             query = location_name.strip().title() # Use title for consistency
             try:
                 db.update_geo_cache_override(location_name.strip().title(), best_match['id'])
             except Exception as e:
-                print(f"   ⚠️ Cache update error during refinement: {e}")
+                self.log(f"Cache update error during refinement: {e}", level='warning')
             return best_match['id'], True
             
-        print(f"   ⚠️ No match for '{location_name}' in candidates. Using Master GeoID.")
+        self.log(f"No match for '{location_name}' in candidates. Using Master GeoID.", level='warning')
         return master_geo_id, False
 
     def resolve_geo_id(self, location_name):
@@ -406,22 +417,22 @@ class LinkedInScraper:
             pp_id = row.get('populated_place_id')
             final_id = pp_id if pp_id else master_id
             is_refined = pp_id is not None
-            print(f"   📍 Cache hit: {location_name} (ID: {final_id}) {'[REFINED]' if is_refined else ''}")
+            self.log(f"Cache hit: {location_name} (ID: {final_id}) {'[REFINED]' if is_refined else ''}")
             return final_id, is_refined
 
-        print(f"📍 Resolving location: {location_name}...")
+        self.log(f"Resolving location: {location_name}...")
         
         # 1. Step 0: Check for direct candidate match (Optimized)
         match = db.get_candidate_by_corrected_name(query)
         if match:
             pp_id = match['pp_id']
             master_id = match['master_geo_id']
-            print(f"   ✅ Direct candidate match found: {pp_id} (Master: {master_id})")
+            self.log(f"Direct candidate match found: {pp_id} (Master: {master_id})", level='success')
             # Save to cache automatically to avoid future candidate hits for this exact query
             try:
                 db.save_geo_cache(query, master_id, pp_id)
             except Exception as e:
-                print(f"   ⚠️ Scraper Warning (Save Geo Cache): {e}")
+                self.log(f"Scraper Warning (Save Geo Cache): {e}", level='warning')
                 pass
             return pp_id, True
 
@@ -447,13 +458,13 @@ class LinkedInScraper:
                     if '*geo' in target:
                         geo_urn = target.get('*geo')
                         master_geo_id = geo_urn.split(':')[-1]
-                        print(f"   ✅ Master GeoID: {target.get('*geo')} ({master_geo_id})")
+                        self.log(f"Master GeoID: {target.get('*geo')} ({master_geo_id})", level='success')
                         break # Take first result
         except Exception as e:
-            print(f"   ⚠️ Error resolving Master GeoID: {e}")
+            self.log(f"Error resolving Master GeoID: {e}", level='warning')
             
         if not master_geo_id:
-            print("   ⚠️ Could not resolve Master GeoID.")
+            self.log("Could not resolve Master GeoID.", level='warning')
             return None, False
             
         # 3. Step 2: Refine to Populated Place
@@ -467,15 +478,13 @@ class LinkedInScraper:
             cache_pp_id = pp_id if is_refined else None
             db.save_geo_cache(location_name.strip().title(), master_geo_id, cache_pp_id)
         except Exception as e:
-            print(f"   ⚠️ Cache write error: {e}")
+            self.log(f"Cache write error: {e}", level='warning')
             
-        return final_id, is_refined
-
         return final_id, is_refined
 
     def fetch_page(self, start, count=25, geo_id=None, is_refined=False, sort_by="DD", time_range=None):
         """Fetch a single page of jobs at a specific offset."""
-        print(f"🌐 Fetching jobs starting at {start}...")
+        self.log(f"Fetching jobs starting at {start}...")
         
         # Construct Query parts
         filter_list = [f"sortBy:List({sort_by})"]
@@ -530,7 +539,7 @@ class LinkedInScraper:
         q_param = "jobSearch"
         
         full_url = f"{VOYAGER_API_URL}?decorationId={decoration_id}&count={count}&q={q_param}&query={query_string}&servedEventEnabled=false&start={start}"
-        # print(f"🔗 Request URL: {full_url}")
+        # self.log(f"🔗 Request URL: {full_url}")
 
         try:
             # RETRY LOGIC: Simple retry for 500/timeout errors
@@ -546,17 +555,17 @@ class LinkedInScraper:
                     if response.status_code == 200:
                         break
                     elif response.status_code in [429, 500, 502, 503, 504]:
-                         print(f"⚠️  API Error {response.status_code}. Retrying ({attempt+1}/{retries})...")
+                         self.log(f"API Error {response.status_code}. Retrying ({attempt+1}/{retries})...", level='warning')
                          sleep(2 * (attempt + 1))
                     else:
-                        print(f"❌ API Error: {response.status_code}")
+                        self.log(f"API Error: {response.status_code}", level='error')
                         return [], 0
                 except Exception as req_err:
-                     print(f"⚠️  Request Error: {req_err}. Retrying ({attempt+1}/{retries})...")
+                     self.log(f"Request Error: {req_err}. Retrying ({attempt+1}/{retries})...", level='warning')
                      sleep(2 * (attempt + 1))
             else:
                 # Loop exhausted
-                print(f"❌ Failed to fetch page at {start} after {retries} retries.")
+                self.log(f"Failed to fetch page at {start} after {retries} retries.", level='error')
                 return [], 0
 
             data = response.json()
@@ -679,7 +688,7 @@ class LinkedInScraper:
 
                 # Debug log (only if NULL to avoid spam)
                 if not listed_at:
-                    print(f"   ⚠️  Could not find listing date for '{title}'. (Posting keys: {list(posting_data.keys()) if posting_data else 'N/A'}, Card keys: {list(card.keys())})")
+                    self.log(f"Could not find listing date for '{title}'. (Posting keys: {list(posting_data.keys()) if posting_data else 'N/A'}, Card keys: {list(card.keys())})", level='warning')
                 
                 # Check Actively Reviewing Status
                 is_actively_reviewing = False
@@ -746,14 +755,14 @@ class LinkedInScraper:
                 page_jobs.append(job_data)
 
             if not page_jobs:
-                print(f"⚠️  No more jobs found at offset {start}.")
+                self.log(f"No more jobs found at offset {start}.", level='warning')
                 
-            print(f"✅ Found {len(page_jobs)} jobs on page starting at {start}.")
+            self.log(f"Found {len(page_jobs)} jobs on page starting at {start}.", level='success')
             return page_jobs, total_jobs
             
         except Exception as e:
-            print(f"❌ Error fetching page: {e}")
-            self.log_error(f"Error fetching page {start}: {e}")
+            self.log(f"Error fetching page: {e}", level='error')
+            self.handle_api_error(response, f"Error fetching page {start}: {e}") # Assuming 'response' is available from the last attempt
             return [], 0
 
     def _process_single_job(self, job, dismissed_ids):
@@ -774,7 +783,7 @@ class LinkedInScraper:
         
         # 2. Check LinkedIn-native dismissal (Sync to DB if not present)
         if job.get('is_already_dismissed'):
-            print(f"   📥 Syncing LinkedIn-native dismissal: '{title}'")
+            self.log(f"Syncing LinkedIn-native dismissal: '{title}'")
             sync_data = {
                 'job_id': job_id,
                 'title': title,
@@ -800,7 +809,7 @@ class LinkedInScraper:
             if re.search(pattern, title.lower()):
                 should_dismiss = True
                 dismiss_reason = "job_title" 
-                print(f"   🔍 Match found: '{keyword}' in Title: '{title}'")
+                self.log(f"Match found: '{keyword}' in Title: '{title}'")
                 break
         
         # Check Company Blocklist
@@ -809,20 +818,20 @@ class LinkedInScraper:
                 if company_url and keyword.lower() in company_url.lower():
                     should_dismiss = True
                     dismiss_reason = "company"
-                    print(f"   🔍 Match found: '{keyword}' in Company URL: '{company_url}'")
+                    self.log(f"Match found: '{keyword}' in Company URL: '{company_url}'")
                     break
         
         # Check Auto-Dismiss for Applied Jobs
         if not should_dismiss and job.get('is_applied'):
             should_dismiss = True
             dismiss_reason = "applied"
-            print(f"   🚫 Auto-dismissing already applied job: '{title}'")
+            self.log(f"Auto-dismissing already applied job: '{title}'")
             
         # Description-Based Deduplication
         if not should_dismiss:
             dup_id = self.get_earliest_duplicate_job_id(title, company)
             if dup_id and dup_id != job_id:
-                print(f"   🤔 Found potential duplicate in DB (ID: {dup_id}). Comparing descriptions...")
+                self.log(f"Found potential duplicate in DB (ID: {dup_id}). Comparing descriptions...")
                 if self.job_delay > 0: sleep(self.job_delay)
                 desc_new = self.fetch_job_description(job_id)
                 desc_old = self.fetch_job_description(dup_id)
@@ -837,18 +846,33 @@ class LinkedInScraper:
                     if similarity >= 0.95: # 95% similarity threshold
                         should_dismiss = True
                         dismiss_reason = "duplicate_description"
-                        print(f"   🚫 Text descriptions are {similarity*100:.1f}% similar! Deduplicating...")
+                        self.log(f"Text descriptions are {similarity*100:.1f}% similar! Deduplicating...")
                     else:
-                        print(f"   ✅ Descriptions differ (similarity: {similarity*100:.1f}%). Not a duplicate.")
+                        self.log(f"Descriptions differ (similarity: {similarity*100:.1f}%). Not a duplicate.", level='success')
                 else:
-                    print(f"   ⚠️ Could not fetch one or both descriptions for comparison.")
+                    self.log(f"Could not fetch one or both descriptions for comparison.", level='warning')
         
         # 4. Perform Dismissal on LinkedIn
         if should_dismiss:
             if self.job_delay > 0: sleep(self.job_delay)
             job_data = self.dismiss_job(job_id, title, company, location, dismiss_urn, reason=dismiss_reason, job_url=job_url, company_url=company_url, is_reposted=is_reposted, listed_at=listed_at)
+            
+            # Persist dismissal to Supabase with history_id
             if job_data:
-                return job_data, True, False
+                db.save_dismissed_job(
+                    job_id=job_id,
+                    title=title,
+                    company=company,
+                    location=location,
+                    reason=dismiss_reason,
+                    job_url=job_url,
+                    company_url=company_url,
+                    is_reposted=is_reposted,
+                    listed_at=listed_at,
+                    user_id=self.user_id,
+                    history_id=self.history_id
+                )
+            return job_data, True, False
         
         return None, False, False
 
@@ -983,8 +1007,8 @@ class LinkedInScraper:
 
         # 4. Batch Save all dismissed jobs to Supabase
         if all_dismissed_jobs:
-            print(f"\n💾 Batch saving {len(all_dismissed_jobs)} dismissed jobs to Supabase...")
-            db.batch_save_dismissed_jobs(all_dismissed_jobs)
+            self.log(f"Batch saving {len(all_dismissed_jobs)} dismissed jobs to Supabase history...")
+            db.batch_save_dismissed_jobs(all_dismissed_jobs, history_id=self.history_id)
         
         print(f"📊 Stats: Reposted: {total_reposted}, Easy: {total_easy}, Early: {total_early}, Reviewing: {total_reviewing}, Applied: {total_applied}, Viewed: {total_viewed}")
         

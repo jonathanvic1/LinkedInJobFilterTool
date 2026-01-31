@@ -88,7 +88,7 @@ class Database:
             print(f"   ⚠️ DB Error (get_dismissed_job_ids): {e}")
         return set()
 
-    def save_dismissed_job(self, job_id, title, company, location, reason, job_url, company_url, is_reposted=False, listed_at=None, user_id=None):
+    def save_dismissed_job(self, job_id, title, company, location, reason, job_url, company_url, is_reposted=False, listed_at=None, user_id=None, history_id=None):
         if not self.client: return
         data = {
             "job_id": job_id,
@@ -103,6 +103,8 @@ class Database:
         }
         if user_id:
             data["user_id"] = user_id
+        if history_id:
+            data["history_id"] = history_id
             
         def _execute():
             return self.client.table("dismissed_jobs").upsert(data).execute()
@@ -114,12 +116,18 @@ class Database:
         except Exception as e:
             print(f"   ⚠️ DB Error (save_dismissed_job): {e}")
 
-    def batch_save_dismissed_jobs(self, jobs_data):
+    def batch_save_dismissed_jobs(self, jobs_data, history_id=None):
         """Save multiple dismissed jobs to Supabase individually for maximum reliability and visibility."""
         if not self.client or not jobs_data: return
         
         # Filter out None values and clean data
-        clean_data = [j for j in jobs_data if j and j.get('job_id')]
+        clean_data = []
+        for j in jobs_data:
+            if j and j.get('job_id'):
+                if history_id:
+                    j['history_id'] = history_id
+                clean_data.append(j)
+        
         if not clean_data:
             return
             
@@ -618,10 +626,59 @@ class Database:
                 "completed_at": datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
             }
             self.client.table("search_history").update(data).eq("id", history_id).execute()
+            
+            # Add final log message
+            final_msg = f"Search {status}. Found: {total_found}, Dismissed: {total_dismissed}, Skipped: {total_skipped}"
+            self.log_search_event(history_id, final_msg, level='info')
             return True
         except Exception as e:
             print(f"   ⚠️ DB Error (log_search_complete): {e}")
             return False
+
+    def log_search_event(self, history_id, message, level='info'):
+        """Log a persistent event for a search run."""
+        if not self.client or not history_id: return
+        try:
+            data = {
+                "history_id": history_id,
+                "message": message,
+                "level": level,
+                "created_at": datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
+            }
+            self.client.table("search_logs").insert(data).execute()
+        except Exception as e:
+            print(f"   ⚠️ DB Error (log_search_event): {e}")
+
+    def get_search_logs(self, history_id):
+        """Fetch all logs for a specific run."""
+        if not self.client or not history_id: return []
+        try:
+            response = self.client.table("search_logs").select("*").eq("history_id", history_id).order("created_at", desc=False).execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"   ⚠️ DB Error (get_search_logs): {e}")
+            return []
+
+    def get_jobs_for_run(self, history_id):
+        """Get all dismissed jobs processed during a specific run."""
+        if not self.client or not history_id: return []
+        try:
+            response = self.client.table("dismissed_jobs").select("*").eq("history_id", history_id).order("dismissed_at", desc=True).execute()
+            # Map back to API format
+            jobs = []
+            for row in response.data:
+                jobs.append({
+                    "job_id": row.get('job_id'),
+                    "title": row.get('title'),
+                    "company": row.get('company'),
+                    "location": row.get('location'),
+                    "reason": row.get('dismiss_reason'),
+                    "dismissed_at": row.get('dismissed_at')
+                })
+            return jobs
+        except Exception as e:
+            print(f"   ⚠️ DB Error (get_jobs_for_run): {e}")
+            return []
     
     def get_search_history(self, user_id, limit=20, offset=0):
         """Get paginated search history for a user."""

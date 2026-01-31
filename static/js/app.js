@@ -1154,6 +1154,14 @@ function renderSearchHistory(items, total) {
                 <td class="px-6 py-4 text-center text-gray-300 font-mono">${row.total_found ?? 0}</td>
                 <td class="px-6 py-4 text-center text-gray-300 font-mono">${row.total_dismissed ?? 0}</td>
                 <td class="px-6 py-4 text-gray-500 text-[11px] font-mono">${formatDateTime(row.started_at)}</td>
+                <td class="px-6 py-4 text-right">
+                    <button onclick="viewJobDetails('${row.id}')" class="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded-lg transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </button>
+                </td>
             </tr>
         `;
     }).join('');
@@ -1264,5 +1272,123 @@ async function deleteSavedSearch(searchId) {
         }
     } catch (e) {
         showToast('Failed to delete search', true);
+    }
+}
+
+// ========== JOB DETAILS MODAL ==========
+
+let detailsPollingInterval = null;
+let currentDetailsId = null;
+
+async function viewJobDetails(historyId) {
+    currentDetailsId = historyId;
+    const modal = document.getElementById('job-details-modal');
+    modal.classList.remove('hidden');
+
+    // Clear previous data
+    document.getElementById('jd-logs').innerHTML = '<div class="text-gray-500 italic">Fetching logs...</div>';
+    document.getElementById('jd-jobs').innerHTML = '<div class="text-gray-500 italic">Fetching jobs...</div>';
+
+    // Initial fetch
+    await refreshJobDetails(historyId);
+
+    // Start polling if it's running
+    if (detailsPollingInterval) clearInterval(detailsPollingInterval);
+
+    detailsPollingInterval = setInterval(() => {
+        refreshJobDetails(historyId);
+    }, 2000);
+}
+
+function closeJobDetailsModal() {
+    const modal = document.getElementById('job-details-modal');
+    modal.classList.add('hidden');
+    if (detailsPollingInterval) {
+        clearInterval(detailsPollingInterval);
+        detailsPollingInterval = null;
+    }
+    currentDetailsId = null;
+}
+
+async function refreshJobDetails(historyId) {
+    try {
+        const res = await apiFetch(`/api/search_history/${historyId}/details`);
+        if (!res.ok) throw new Error('Failed to fetch details');
+        const data = await res.json();
+
+        // Find history row to get stats and status
+        const historyRes = await apiFetch(`/api/search_history?limit=100`); // Search for it
+        const historyData = await historyRes.json();
+        const run = historyData.items.find(h => h.id === historyId);
+
+        renderJobDetails(data, run);
+
+        // If not running, stop polling after one last update
+        if (run && run.status !== 'running' && detailsPollingInterval) {
+            clearInterval(detailsPollingInterval);
+            detailsPollingInterval = null;
+        }
+    } catch (e) {
+        console.error("Refresh details failed", e);
+    }
+}
+
+function renderJobDetails(data, run) {
+    // Update Stats
+    document.getElementById('jd-found').textContent = run?.total_found ?? 0;
+    document.getElementById('jd-dismissed').textContent = run?.total_dismissed ?? 0;
+    document.getElementById('jd-skipped').textContent = run?.total_skipped ?? 0;
+
+    // Update Title Info
+    document.getElementById('jd-title').textContent = (run?.keywords && run.keywords !== 'None') ? run.keywords : 'General Search';
+    document.getElementById('jd-subtitle').textContent = `Run started at ${formatDateTime(run?.started_at)}`;
+
+    // Status Badge
+    const badge = document.getElementById('jd-status-badge');
+    const isRunning = run?.status === 'running';
+    badge.innerHTML = `
+        <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter border ${isRunning ? 'bg-blue-900/40 text-blue-300 border-blue-800/50' : 'bg-gray-800 text-gray-400 border-gray-700'
+        }">${run?.status || 'unknown'}</span>
+    `;
+
+    // Render Logs
+    const logContainer = document.getElementById('jd-logs');
+    if (data.logs && data.logs.length > 0) {
+        const atBottom = Math.abs(logContainer.scrollHeight - logContainer.clientHeight - logContainer.scrollTop) < 50;
+
+        logContainer.innerHTML = data.logs.map(log => {
+            const level = log.level || 'info';
+            const color = level === 'error' ? 'text-red-400' : level === 'success' ? 'text-green-400' : level === 'warning' ? 'text-yellow-400' : 'text-gray-300';
+            return `<div class="flex space-x-2"><span class="text-gray-600 shrink-0 font-bold">[${new Date(log.created_at).toLocaleTimeString()}]</span><span class="${color}">${escapeHtml(log.message)}</span></div>`;
+        }).join('');
+
+        if (atBottom) logContainer.scrollTop = logContainer.scrollHeight;
+    } else {
+        logContainer.innerHTML = '<div class="text-gray-600 italic">No activity logs recorded.</div>';
+    }
+
+    // Render Jobs
+    const jobContainer = document.getElementById('jd-jobs');
+    if (data.jobs && data.jobs.length > 0) {
+        jobContainer.innerHTML = data.jobs.map(job => {
+            return `
+                <div class="bg-gray-900/40 border border-gray-700/50 rounded-lg p-3 hover:border-gray-600 transition-all">
+                    <div class="flex justify-between items-start mb-1">
+                        <h5 class="text-xs font-bold text-white truncate w-40">${escapeHtml(job.title)}</h5>
+                        <span class="text-[9px] text-gray-500 font-mono">${new Date(job.dismissed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div class="flex items-center text-[10px] text-gray-400 mb-2">
+                        <span class="truncate">${escapeHtml(job.company)}</span>
+                        <span class="mx-1.5 opacity-30">•</span>
+                        <span class="truncate">${escapeHtml(job.location)}</span>
+                    </div>
+                    <div class="inline-block px-1.5 py-0.5 bg-gray-800 text-gray-500 text-[8px] font-black uppercase rounded uppercase tracking-widest border border-gray-700">
+                        ${job.reason?.replace('_', ' ') || 'dismissed'}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        jobContainer.innerHTML = '<div class="text-gray-600 italic p-2 text-xs">Waiting for jobs to process...</div>';
     }
 }

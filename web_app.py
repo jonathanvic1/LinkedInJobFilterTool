@@ -99,6 +99,7 @@ class ScraperState:
     total_dismissed = 0
     stop_event = threading.Event()
     scraper_instance = None
+    active_history_id = None
 
 state = ScraperState()
 log_lock = threading.Lock()
@@ -151,15 +152,18 @@ def get_user_id(request: Request) -> str:
         return request.state.user.id
     return None
 
-def log_message(msg: str):
-    """Add a message to the global log buffer."""
+def log_message(msg: str, history_id: str = None):
+    """Log to in-memory state and optionally persist to Supabase."""
     with log_lock:
-        timestamp = time.strftime("%H:%M:%S")
-        entry = f"[{timestamp}] {msg}"
-        state.logs.append(entry)
-        # Keep last 1000 logs
-        if len(state.logs) > 1000:
+        state.logs.append(msg)
+        if len(state.logs) > 500:
             state.logs.pop(0)
+    
+    # Persist to DB if history_id provided
+    if history_id:
+        db.log_search_event(history_id, msg)
+    elif state.active_history_id:
+        db.log_search_event(state.active_history_id, msg)
             
 class LogInterceptor:
     """Redirect stdout to our log buffer."""
@@ -246,7 +250,8 @@ def run_scraper_thread(params: SearchParams, user_id: str = None):
             user_id=user_id,
             cookie_string=user_cookie,
             page_delay=page_delay,
-            job_delay=job_delay
+            job_delay=job_delay,
+            history_id=history_id
         )
         state.scraper_instance = scraper
         
@@ -262,6 +267,7 @@ def run_scraper_thread(params: SearchParams, user_id: str = None):
         if state.scraper_instance:
             state.scraper_instance.close_session()
         state.running = False
+        state.active_history_id = None
         log_message("🛑 Scraper finished.")
         
         # Log search completion
@@ -278,8 +284,11 @@ def start_scraper(params: SearchParams, request: Request):
     if state.running:
         raise HTTPException(status_code=400, detail="Scraper is already running")
     
-    user_id = get_user_id(request)
-    thread = threading.Thread(target=run_scraper_thread, args=(params, user_id))
+    user_id = get_user_id(request) # Ensure user_id is defined
+    history_id = db.log_search_start(user_id, params.dict())
+    state.active_history_id = history_id
+    
+    thread = threading.Thread(target=run_scraper_thread, args=(params, user_id, history_id))
     thread.daemon = True
     thread.start()
     return {"status": "started"}
@@ -568,6 +577,22 @@ def get_search_history(request: Request, limit: int = 20, offset: int = 0):
         "total": total,
         "limit": limit,
         "offset": offset
+    }
+
+# ========== SEARCH HISTORY DETAILS ==========
+
+@app.get("/api/search_history/{history_id}/details")
+def get_history_details(history_id: str, request: Request):
+    """Get full details for a specific run including logs and parsed jobs."""
+    user_id = get_user_id(request)
+    
+    # Verify owner (implicitly via DB methods using history_id)
+    logs = db.get_search_logs(history_id)
+    jobs = db.get_jobs_for_run(history_id)
+    
+    return {
+        "logs": logs,
+        "jobs": jobs
     }
 
 # --- Serve Static Files ---
