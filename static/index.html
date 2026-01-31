@@ -972,6 +972,125 @@
         </div>
     </div>
 
+    <!-- Edit Search Modal -->
+    <div id="edit-search-modal"
+        class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div
+            class="bg-gray-800 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-white flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Edit Saved Search
+                </h3>
+                <button onclick="closeEditSearchModal()" class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 space-y-6">
+                <!-- Name -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Search
+                        Name</label>
+                    <input type="text" id="edit-search-name"
+                        class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <!-- Keywords & Location -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label
+                            class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Keywords</label>
+                        <input type="text" id="edit-search-keywords"
+                            class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Location</label>
+                        <input type="text" id="edit-search-location"
+                            class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <!-- Time Range & Limit -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Time Range</label>
+                        <select id="edit-search-time-range"
+                            class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="30m">Past 30 Minutes</option>
+                            <option value="1h">Past 1 Hour</option>
+                            <option value="8h">Past 8 Hours</option>
+                            <option value="24h">Past 24 Hours</option>
+                            <option value="2d">Past 2 Days</option>
+                            <option value="3d">Past 3 Days</option>
+                            <option value="week">Past Week</option>
+                            <option value="month">Past Month</option>
+                            <option value="all">Any Time</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Job Limit</label>
+                        <input type="number" id="edit-search-limit"
+                            class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <!-- Toggles & Workplace -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-4">Filters</label>
+                        <div class="space-y-3">
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="edit-search-easy-apply" class="custom-checkbox">
+                                <span class="text-sm text-gray-300">Easy Apply Only</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="edit-search-relevant" class="custom-checkbox">
+                                <span class="text-sm text-gray-300">Exclude Non-Relevant</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-4">Workplace Type</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="edit-wp-onsite" value="1"
+                                    class="custom-checkbox shadow-none">
+                                <span class="text-sm text-gray-300">On-site</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="edit-wp-remote" value="2"
+                                    class="custom-checkbox shadow-none">
+                                <span class="text-sm text-gray-300">Remote</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" id="edit-wp-hybrid" value="3"
+                                    class="custom-checkbox shadow-none">
+                                <span class="text-sm text-gray-300">Hybrid</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 bg-gray-900/50 flex justify-end space-x-3 border-t border-gray-700">
+                <button onclick="closeEditSearchModal()"
+                    class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition-all">
+                    Cancel
+                </button>
+                <button onclick="saveSearchEdits()"
+                    class="px-8 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/auth.js"></script>
     <script src="js/app.js"></script>
 </body>

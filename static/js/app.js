@@ -1,5 +1,8 @@
 // State
 let isRunning = false;
+let currentDetailsId = null;
+let currentEditId = null; // Track the search currently being edited
+let allSavedSearches = []; // Cache for editing lookup
 let logInterval = null;
 let historyOffset = 0;
 let historyLimit = 50;
@@ -1035,10 +1038,12 @@ async function loadSearches(manual = false) {
             apiFetch(`/api/search_history?limit=${searchHistoryLimit}&offset=${searchHistoryOffset}`)
         ]);
 
-        const searchesData = await searchesRes.json();
+        if (!searchesRes.ok) throw new Error('Failed to fetch saved searches');
+        allSavedSearches = (await searchesRes.json()).searches || [];
+
         const historyData = await historyRes.json();
 
-        renderSavedSearches(searchesData.searches || []);
+        renderSavedSearches(allSavedSearches);
         renderSearchHistory(historyData.items || [], historyData.total || 0);
 
         if (manual) showToast("Searches refreshed");
@@ -1085,13 +1090,13 @@ function renderSavedSearches(searches) {
         }
 
         return `
-            <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-6 hover:border-blue-500/50 transition-all group flex flex-col h-[320px]">
+            <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-6 hover:border-blue-500/50 transition-all group flex flex-col min-h-[320px]">
                 <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center space-x-2 truncate flex-1 pr-2">
-                        <h4 class="font-bold text-white text-xl truncate group-hover:text-blue-400 transition-colors cursor-pointer" onclick="renameSavedSearch('${s.id}', '${s.name.replace(/'/g, "\\'")}')">${escapeHtml(s.name)}</h4>
-                        <button onclick="renameSavedSearch('${s.id}', '${s.name.replace(/'/g, "\\'")}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all p-1">
+                        <h4 class="font-bold text-white text-xl truncate group-hover:text-blue-400 transition-colors cursor-pointer" onclick="openEditSearchModal('${s.id}')">${escapeHtml(s.name)}</h4>
+                        <button onclick="openEditSearchModal('${s.id}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all p-1">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
                         </button>
                     </div>
@@ -1251,9 +1256,7 @@ async function saveCurrentSearch() {
 
 async function runSavedSearch(searchId) {
     try {
-        const res = await apiFetch('/api/searches');
-        const data = await res.json();
-        const search = data.searches?.find(s => s.id === searchId);
+        const search = allSavedSearches.find(s => s.id === searchId);
 
         if (!search) {
             showToast('Search not found', true);
@@ -1298,28 +1301,100 @@ async function deleteSavedSearch(searchId) {
     }
 }
 
-async function renameSavedSearch(searchId, currentName) {
-    const newName = prompt('Enter new name for this search:', currentName);
-    if (!newName || newName === currentName) return;
+async function openEditSearchModal(searchId) {
+    const search = allSavedSearches.find(s => s.id === searchId);
+    if (!search) return;
+
+    currentEditId = searchId;
+
+    // Populate fields
+    document.getElementById('edit-search-name').value = search.name || '';
+    document.getElementById('edit-search-keywords').value = search.keywords || '';
+    document.getElementById('edit-search-location').value = search.location || '';
+    document.getElementById('edit-search-time-range').value = search.time_range || '24h';
+    document.getElementById('edit-search-limit').value = search.job_limit || 25;
+    document.getElementById('edit-search-easy-apply').checked = search.easy_apply || false;
+    document.getElementById('edit-search-relevant').checked = search.relevant || false;
+
+    // Workplace types
+    const wp = search.workplace_type || [];
+    document.getElementById('edit-wp-onsite').checked = wp.includes(1);
+    document.getElementById('edit-wp-remote').checked = wp.includes(2);
+    document.getElementById('edit-wp-hybrid').checked = wp.includes(3);
+
+    document.getElementById('edit-search-modal').classList.remove('hidden');
+}
+
+function closeEditSearchModal() {
+    document.getElementById('edit-search-modal').classList.add('hidden');
+    currentEditId = null;
+}
+
+async function saveSearchEdits() {
+    if (!currentEditId) return;
+
+    const saveBtn = event.target;
+    const originalText = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = 'Saving...';
 
     try {
-        const res = await apiFetch(`/api/searches/${searchId}`, {
+        const workplace_type = [];
+        if (document.getElementById('edit-wp-onsite').checked) workplace_type.push(1);
+        if (document.getElementById('edit-wp-remote').checked) workplace_type.push(2);
+        if (document.getElementById('edit-wp-hybrid').checked) workplace_type.push(3);
+
+        const updates = {
+            name: document.getElementById('edit-search-name').value.trim(),
+            keywords: document.getElementById('edit-search-keywords').value.trim(),
+            location: document.getElementById('edit-search-location').value.trim(),
+            time_range: document.getElementById('edit-search-time-range').value,
+            job_limit: parseInt(document.getElementById('edit-search-limit').value) || 25,
+            easy_apply: document.getElementById('edit-search-easy-apply').checked,
+            relevant: document.getElementById('edit-search-relevant').checked,
+            workplace_type: workplace_type
+        };
+
+        if (!updates.name) {
+            showToast('Search name is required', true);
+            return;
+        }
+
+        const res = await apiFetch(`/api/searches/${currentEditId}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: newName })
+            body: JSON.stringify(updates)
         });
 
         if (res.ok) {
-            showToast('Search renamed');
+            showToast('Search updated successfully');
+            closeEditSearchModal();
             loadSearches();
         } else {
-            showToast('Failed to rename search', true);
+            showToast('Failed to update search', true);
         }
     } catch (e) {
-        console.error('Rename search failed', e);
-        showToast('Error renaming search', true);
+        console.error('Update search failed', e);
+        showToast('Error updating search', true);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
     }
 }
+
+// Global modal escape listener
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modals = ['edit-search-modal', 'job-details-modal', 'optimization-modal'];
+        modals.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !el.classList.contains('hidden')) {
+                if (id === 'edit-search-modal') closeEditSearchModal();
+                else if (id === 'job-details-modal') closeJobDetailsModal();
+                else if (id === 'optimization-modal') closeOptimizationModal();
+            }
+        });
+    }
+});
 
 // ========== JOB DETAILS MODAL ==========
 
