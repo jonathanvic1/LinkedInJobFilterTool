@@ -12,26 +12,33 @@ class Database:
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(Database, cls).__new__(cls)
-            cls._instance._init_client()
+            cls._instance._local = threading.local()
+            cls._instance._init_config()
             cls._instance._dup_cache = {}  # Cache for get_earliest_duplicate
             cls._instance._dup_cache_lock = threading.Lock()
         return cls._instance
     
-    def _init_client(self):
-        url = os.environ.get("SUPABASE_URL")
-        # Prioritize Service Role Key for backend to bypass RLS
-        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
-        
-        if not url or not key:
+    def _init_config(self):
+        self.url = os.environ.get("SUPABASE_URL")
+        self.key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
+        if not self.url or not self.key:
             print("⚠️ SUPABASE_URL or SUPABASE_KEY not found in environment variables. DB operations will fail.")
-            self.client = None
-        else:
-            try:
-                self.client: Client = create_client(url, key)
-                is_service = "SUPABASE_SERVICE_ROLE_KEY" in os.environ
-                print(f"✅ Supabase client initialized ({'Service Role' if is_service else 'Anon/Standard Key'})")
-            except Exception as e:
-                print(f"❌ Failed to initialize Supabase: {e}")
+
+    @property
+    def client(self) -> Client:
+        """Get or initialize a thread-local Supabase client."""
+        if not hasattr(self._local, "client"):
+            if not self.url or not self.key:
+                self._local.client = None
+            else:
+                try:
+                    # Initialize client for this thread
+                    self._local.client = create_client(self.url, self.key)
+                    # print(f"✅ Supabase client initialized for thread {threading.get_ident()}")
+                except Exception as e:
+                    print(f"❌ Failed to initialize Supabase client for thread {threading.get_ident()}: {e}")
+                    self._local.client = None
+        return self._local.client
 
     def _retry_request(self, func, *args, max_retries=3, initial_delay=0.5, **kwargs):
         """Generic retry wrapper with exponential backoff and jitter."""
@@ -41,7 +48,7 @@ class Database:
             except Exception as e:
                 err_msg = str(e).lower()
                 # Check for transient errors or Cloudflare/Supabase connection limits
-                is_transient = any(kw in err_msg for kw in ["terminated", "timeout", "502", "503", "504", "429", "batch"])
+                is_transient = any(kw in err_msg for kw in ["terminated", "timeout", "connection", "502", "503", "504", "429", "batch"])
                 
                 if i < max_retries - 1 and is_transient:
                     delay = initial_delay * (2 ** i) + random.uniform(0, 0.1)
