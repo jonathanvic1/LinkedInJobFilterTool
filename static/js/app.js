@@ -1399,7 +1399,6 @@ document.addEventListener('keydown', (e) => {
 // ========== JOB DETAILS MODAL ==========
 
 let detailsPollingInterval = null;
-let currentDetailsId = null;
 
 async function viewJobDetails(historyId) {
     currentDetailsId = historyId;
