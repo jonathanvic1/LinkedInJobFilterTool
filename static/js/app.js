@@ -1065,6 +1065,18 @@ function renderSavedSearches(searches) {
 
     container.innerHTML = searches.map(s => {
         const filters = [];
+
+        // Time Range Tag
+        if (s.time_range) {
+            const timeLabels = { '24h': 'Past 24 Hours', 'week': 'Past Week', 'month': 'Past Month', 'all': 'Any Time' };
+            filters.push(timeLabels[s.time_range] || s.time_range);
+        }
+
+        // Job Limit Tag
+        if (s.job_limit) {
+            filters.push(`Limit: ${s.job_limit} Jobs`);
+        }
+
         if (s.easy_apply) filters.push('Easy Apply');
         if (s.relevant) filters.push('Most Relevant');
         if (s.workplace_type?.length) {
@@ -1073,9 +1085,16 @@ function renderSavedSearches(searches) {
         }
 
         return `
-            <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-6 hover:border-blue-500/50 transition-all group flex flex-col h-[300px]">
+            <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-700/50 p-6 hover:border-blue-500/50 transition-all group flex flex-col h-[320px]">
                 <div class="flex justify-between items-start mb-4">
-                    <h4 class="font-bold text-white text-xl truncate pr-2 group-hover:text-blue-400 transition-colors">${escapeHtml(s.name)}</h4>
+                    <div class="flex items-center space-x-2 truncate flex-1 pr-2">
+                        <h4 class="font-bold text-white text-xl truncate group-hover:text-blue-400 transition-colors cursor-pointer" onclick="renameSavedSearch('${s.id}', '${s.name.replace(/'/g, "\\'")}')">${escapeHtml(s.name)}</h4>
+                        <button onclick="renameSavedSearch('${s.id}', '${s.name.replace(/'/g, "\\'")}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all p-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                        </button>
+                    </div>
                     <button onclick="deleteSavedSearch('${s.id}')" 
                         class="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all p-1.5 bg-gray-900/50 rounded-lg">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1155,10 +1174,15 @@ function renderSearchHistory(items, total) {
                 <td class="px-6 py-4 text-center text-gray-300 font-mono">${row.total_dismissed ?? 0}</td>
                 <td class="px-6 py-4 text-gray-500 text-[11px] font-mono">${formatDateTime(row.started_at)}</td>
                 <td class="px-6 py-4 text-right">
-                    <button onclick="viewJobDetails('${row.id}')" class="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded-lg transition-all">
+                    <button onclick="viewJobDetails('${row.id}')" class="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded-lg transition-all" title="View Details">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </button>
+                    <button onclick="deleteHistoryEntry('${row.id}')" class="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-all" title="Delete Entry">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                     </button>
                 </td>
@@ -1260,18 +1284,40 @@ async function runSavedSearch(searchId) {
 }
 
 async function deleteSavedSearch(searchId) {
-    if (!confirm('Delete this saved search?')) return;
-
+    if (!confirm('Are you sure you want to delete this saved search?')) return;
     try {
         const res = await apiFetch(`/api/searches/${searchId}`, { method: 'DELETE' });
         if (res.ok) {
             showToast('Search deleted');
             loadSearches();
         } else {
-            throw new Error('Delete failed');
+            showToast('Failed to delete search', true);
         }
     } catch (e) {
         showToast('Failed to delete search', true);
+    }
+}
+
+async function renameSavedSearch(searchId, currentName) {
+    const newName = prompt('Enter new name for this search:', currentName);
+    if (!newName || newName === currentName) return;
+
+    try {
+        const res = await apiFetch(`/api/searches/${searchId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName })
+        });
+
+        if (res.ok) {
+            showToast('Search renamed');
+            loadSearches();
+        } else {
+            showToast('Failed to rename search', true);
+        }
+    } catch (e) {
+        console.error('Rename search failed', e);
+        showToast('Error renaming search', true);
     }
 }
 
@@ -1390,5 +1436,30 @@ function renderJobDetails(data, run) {
         }).join('');
     } else {
         jobContainer.innerHTML = '<div class="text-gray-600 italic p-2 text-xs">Waiting for jobs to process...</div>';
+    }
+}
+
+async function deleteHistoryEntry(historyId) {
+    if (!confirm('Are you sure you want to delete this run and all its logs?')) return;
+
+    try {
+        const res = await apiFetch(`/api/search_history/${historyId}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            showToast('History entry deleted');
+            loadHistory(); // Refresh table
+
+            // If the deleted run was being viewed, close the modal
+            if (currentDetailsId === historyId) {
+                closeJobDetailsModal();
+            }
+        } else {
+            showToast('Failed to delete history entry', true);
+        }
+    } catch (e) {
+        console.error('Delete history failed', e);
+        showToast('Error deleting history', true);
     }
 }

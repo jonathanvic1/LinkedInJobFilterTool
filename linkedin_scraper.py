@@ -162,7 +162,19 @@ class LinkedInScraper:
 
     def save_dismissed_job(self, job_id, title, company, location, reason, job_url, company_url, is_reposted=False, listed_at=None):
         """Save dismissed job to database."""
-        db.save_dismissed_job(job_id, title, company, location, reason, None, company_url, is_reposted, listed_at, self.user_id)
+        db.save_dismissed_job(
+            job_id=job_id,
+            title=title,
+            company=company,
+            location=location,
+            reason=reason,
+            job_url=job_url,
+            company_url=company_url,
+            is_reposted=is_reposted,
+            listed_at=listed_at,
+            user_id=self.user_id,
+            history_id=self.history_id
+        )
             
     def delete_dismissed_job(self, job_id):
         """Remove a job from the dismissed jobs database."""
@@ -789,10 +801,11 @@ class LinkedInScraper:
                 'title': title,
                 'company': company,
                 'location': location,
-                'dismiss_reason': "linkedin_native_dismissal",
+                'dismiss_reason': 'linkedin_dismissed',
                 'company_linkedin': company_url,
                 'is_reposted': is_reposted,
                 'listed_at': listed_at,
+                'history_id': self.history_id,
                 'user_id': self.user_id,
                 'dismissed_at': datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
             }

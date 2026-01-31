@@ -91,15 +91,15 @@ class Database:
     def save_dismissed_job(self, job_id, title, company, location, reason, job_url, company_url, is_reposted=False, listed_at=None, user_id=None, history_id=None):
         if not self.client: return
         data = {
-            "job_id": job_id,
-            "title": title,
-            "company": company,
-            "location": location,
-            "dismiss_reason": reason,
-            "company_linkedin": company_url,
-            "is_reposted": is_reposted,
-            "listed_at": listed_at,
-            "dismissed_at": datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat(),
+            'job_id': job_id,
+            'title': title,
+            'company': company,
+            'location': location,
+            'dismiss_reason': reason, # Use the passed reason
+            'company_linkedin': company_url,
+            'is_reposted': is_reposted,
+            'listed_at': listed_at,
+            'dismissed_at': datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
         }
         if user_id:
             data["user_id"] = user_id
@@ -593,6 +593,18 @@ class Database:
         except Exception as e:
             print(f"   ⚠️ DB Error (delete_saved_search): {e}")
             return False
+
+    def update_saved_search(self, search_id, user_id, updates):
+        """Update a saved search configuration (e.g., renaming)."""
+        if not self.client: return False
+        try:
+            # Ensure updated_at is refreshed
+            updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+            self.client.table("saved_searches").update(updates).eq("id", search_id).eq("user_id", user_id).execute()
+            return True
+        except Exception as e:
+            print(f"   ⚠️ DB Error (update_saved_search): {e}")
+            return False
     
     # ========== SEARCH HISTORY ==========
     
@@ -694,5 +706,14 @@ class Database:
         except Exception as e:
             print(f"   ⚠️ DB Error (get_search_history): {e}")
             return [], 0
+    def delete_search_history(self, history_id):
+        """Delete a search history entry and all associated logs."""
+        if not self.client or not history_id: return False
+        try:
+            self.client.table("search_history").delete().eq("id", history_id).execute()
+            return True
+        except Exception as e:
+            print(f"   ⚠️ DB Error (delete_search_history): {e}")
+            return False
 
 db = Database()

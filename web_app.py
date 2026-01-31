@@ -557,13 +557,20 @@ def create_saved_search(req: SavedSearchRequest, request: Request):
     raise HTTPException(status_code=500, detail="Failed to save search")
 
 @app.delete("/api/searches/{search_id}")
-def delete_saved_search(search_id: str, request: Request):
-    """Delete a saved search."""
+def delete_search(search_id: str, request: Request):
     user_id = get_user_id(request)
     success = db.delete_saved_search(search_id, user_id)
     if success:
         return {"status": "deleted"}
     raise HTTPException(status_code=500, detail="Failed to delete search")
+
+@app.patch("/api/searches/{search_id}")
+def update_search(search_id: str, updates: dict, request: Request):
+    user_id = get_user_id(request)
+    # Generic update for now, mainly for 'name'
+    if db.update_saved_search(search_id, user_id, updates):
+        return {"status": "success"}
+    raise HTTPException(status_code=500, detail="Failed to update search")
 
 # ========== SEARCH HISTORY ==========
 
@@ -594,6 +601,14 @@ def get_history_details(history_id: str, request: Request):
         "logs": logs,
         "jobs": jobs
     }
+
+@app.delete("/api/search_history/{history_id}")
+def delete_history_entry(history_id: str, request: Request):
+    """Delete a search history entry."""
+    # owner check could be done here if needed
+    if db.delete_search_history(history_id):
+        return {"status": "success"}
+    raise HTTPException(status_code=500, detail="Failed to delete history item")
 
 # --- Serve Static Files ---
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
