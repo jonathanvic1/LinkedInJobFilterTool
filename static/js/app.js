@@ -26,6 +26,50 @@ function showToast(message, isError = false) {
     }, 800);
 }
 
+// Custom Promise-based Confirmation Modal
+function showConfirm(title, message, isDangerous = true) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const titleEl = document.getElementById('confirm-title');
+        const messageEl = document.getElementById('confirm-message');
+        const okBtn = document.getElementById('confirm-ok-btn');
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+        const iconContainer = document.getElementById('confirm-icon');
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+
+        // Customize style based on danger level
+        if (isDangerous) {
+            okBtn.className = "flex-1 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-red-500/20";
+            okBtn.textContent = "Delete";
+            iconContainer.className = "inline-flex items-center justify-center w-14 h-14 bg-red-500/10 text-red-500 rounded-full mb-4";
+        } else {
+            okBtn.className = "flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20";
+            okBtn.textContent = "Confirm";
+            iconContainer.className = "inline-flex items-center justify-center w-14 h-14 bg-blue-500/10 text-blue-500 rounded-full mb-4";
+        }
+
+        const cleanup = (result) => {
+            modal.classList.add('hidden');
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            modal.removeEventListener('click', onOutside);
+            resolve(result);
+        };
+
+        const onOk = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        const onOutside = (e) => { if (e.target === modal) cleanup(false); };
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        modal.addEventListener('click', onOutside);
+
+        modal.classList.remove('hidden');
+    });
+}
+
 // Auth Fetch Helper
 async function apiFetch(url, options = {}) {
     const token = await authClient.getSessionToken();
@@ -415,7 +459,7 @@ async function loadHistory(offset = 0, manual = false) {
 
 // Locations (GeoID Cache)
 async function clearAllGeoCandidates() {
-    if (!confirm('Are you sure you want to clear ALL discovered populated places? This cannot be undone.')) return;
+    if (!await showConfirm('Clear All candidates?', 'Are you sure you want to clear ALL discovered populated places? This cannot be undone.')) return;
     try {
         const res = await apiFetch('/api/geo_candidates', { method: 'DELETE' });
         if (res.ok) {
@@ -430,7 +474,7 @@ async function clearAllGeoCandidates() {
 }
 
 async function clearGeoCandidate(ppId) {
-    if (!confirm('Are you sure you want to clear this populated place?')) return;
+    if (!await showConfirm('Clear Place?', 'Are you sure you want to clear this populated place?')) return;
     try {
         const res = await apiFetch(`/api/geo_candidate/${ppId}`, { method: 'DELETE' });
         if (res.ok) {
@@ -559,7 +603,7 @@ async function saveCandidateNameUpdate() {
 }
 
 async function clearGeoOverride(ppId) {
-    if (!confirm('Clear this override from all queries?')) return;
+    if (!await showConfirm('Clear Override?', 'Clear this override from all queries?')) return;
     try {
         const res = await apiFetch('/api/geo_cache');
         const cache = await res.json();
@@ -577,7 +621,7 @@ async function clearGeoOverride(ppId) {
 
 
 async function deleteGeoCacheEntry(query) {
-    if (!confirm('Are you sure you want to clear this cached location?')) return;
+    if (!await showConfirm('Clear Cache?', 'Are you sure you want to clear this cached location?')) return;
     try {
         await apiFetch(`/api/geo_cache/${encodeURIComponent(query)}`, {
             method: 'DELETE'
@@ -1287,7 +1331,7 @@ async function runSavedSearch(searchId) {
 }
 
 async function deleteSavedSearch(searchId) {
-    if (!confirm('Are you sure you want to delete this saved search?')) return;
+    if (!await showConfirm('Delete Search?', 'Are you sure you want to delete this saved search?')) return;
     try {
         const res = await apiFetch(`/api/searches/${searchId}`, { method: 'DELETE' });
         if (res.ok) {
@@ -1514,7 +1558,7 @@ function renderJobDetails(data, run) {
 }
 
 async function deleteHistoryEntry(historyId) {
-    if (!confirm('Are you sure you want to delete this run and all its logs?')) return;
+    if (!await showConfirm('Delete History?', 'Are you sure you want to delete this run and all its logs?')) return;
 
     try {
         const res = await apiFetch(`/api/search_history/${historyId}`, {

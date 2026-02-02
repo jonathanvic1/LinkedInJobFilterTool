@@ -10,12 +10,12 @@ import os
 import re
 import difflib
 import argparse
+import geo_utils
 import urllib.parse
 from tqdm import tqdm
 from time import sleep
 from typing import List
 from database import db
-import geo_utils
 import concurrent.futures
 from curl_cffi import requests
 from concurrent.futures import ThreadPoolExecutor
