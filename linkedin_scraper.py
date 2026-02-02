@@ -108,7 +108,7 @@ class LinkedInScraper:
     def log(self, message: str, level: str = 'info'):
         """Print log to console and optionally persist to DB."""
         # Console output
-        timestamp = datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0)
+        timestamp = datetime.now(timezone(timedelta(hours=-5))).strftime('%Y-%m-%d %H:%M:%S')
         prefix = "❌" if level == 'error' else "⚠️" if level == 'warning' else "✅" if level == 'success' else "ℹ️"
         print(f"[{timestamp}] {prefix} {message}")
         
@@ -219,7 +219,7 @@ class LinkedInScraper:
                     "company_linkedin": company_url,
                     "is_reposted": is_reposted,
                     "listed_at": listed_at,
-                    "dismissed_at": datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat(),
+                    "dismissed_at": datetime.now(timezone(timedelta(hours=-5))).strftime('%Y-%m-%d %H:%M:%S'),
                     "user_id": self.user_id
                 }
             else:
@@ -830,7 +830,7 @@ class LinkedInScraper:
                 'listed_at': listed_at,
                 'history_id': self.history_id,
                 'user_id': self.user_id,
-                'dismissed_at': datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
+                'dismissed_at': datetime.now(timezone(timedelta(hours=-5))).strftime('%Y-%m-%d %H:%M:%S')
             }
             return sync_data, True, False
             

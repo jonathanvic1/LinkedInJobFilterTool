@@ -655,7 +655,7 @@ class Database:
                 "history_id": history_id,
                 "message": message,
                 "level": level,
-                "created_at": datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
+                "created_at": datetime.now(timezone(timedelta(hours=-5))).strftime('%Y-%m-%d %H:%M:%S')
             }
             self.client.table("search_logs").insert(data).execute()
         except Exception as e:
