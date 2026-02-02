@@ -187,7 +187,7 @@ class LinkedInScraper:
         
         payload = {
             "feedbackType": "NOT_INTERESTED",
-            "jobPostingUrn": f"urn:li:fs_normalized_jobPosting:{job_id}",
+            "jobPostingUrn": f"urn:li:fsd_jobPosting:{job_id}",
             "jobPostingCardUrn": dismiss_urn
         }
         
@@ -751,6 +751,8 @@ class LinkedInScraper:
                     dismiss_action = action.get('dismissJobAction')
                     if dismiss_action:
                         dismiss_urn = dismiss_action.get('jobPostingRelevanceFeedbackUrn')
+                        if start == 0 and len(page_jobs) == 0:
+                             self.log(f"DEBUG: Sample Dismiss URN: {dismiss_urn}", level='info')
                         # Check LinkedIn-native dismissal status
                         feedback_obj = urn_map.get(dismiss_urn)
                         if feedback_obj and feedback_obj.get('dismissed') is True:
