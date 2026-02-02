@@ -153,7 +153,12 @@ def get_user_id(request: Request) -> str:
     return None
 
 def log_message(msg: str, history_id: str = None):
-    """Log to in-memory state and optionally persist to Supabase."""
+    """Log to in-memory state and optionally persist to DB with a uniform timestamp."""
+    # Add timestamp if not already present (checking for standard [YYYY-MM-DD pattern)
+    if not msg.startswith("[20"):  # Simple check for our timestamp format
+        timestamp = datetime.now(timezone(timedelta(hours=-5))).strftime('%Y-%m-%d %H:%M:%S')
+        msg = f"[{timestamp}] {msg}"
+        
     with log_lock:
         state.logs.append(msg)
         if len(state.logs) > 500:
