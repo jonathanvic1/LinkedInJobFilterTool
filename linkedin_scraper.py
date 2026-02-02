@@ -100,6 +100,8 @@ class LinkedInScraper:
         self.session.headers.update(HEADERS)
         if hasattr(self, 'csrf_token') and self.csrf_token:
             self.session.headers.update({'csrf-token': self.csrf_token})
+            
+        self.log("🔧 Initialized scraper with curl_cffi Chrome 136 impersonation and Authenticated Session")
 
     def log(self, message: str, level: str = 'info'):
         """Print log to console and optionally persist to DB."""
@@ -111,8 +113,6 @@ class LinkedInScraper:
         # Persistent DB output
         if self.history_id:
              db.log_search_event(self.history_id, message, level)
-        
-        print("🔧 Initialized scraper with curl_cffi Chrome 136 impersonation and Authenticated Session")
 
     def load_cookies(self):
         """Load cookies from provided string, env var, or file."""
@@ -221,7 +221,10 @@ class LinkedInScraper:
                 return None
                 
         except Exception as e:
-            self.log(f"Error dismissing job: {e}", level='error')
+            if "Session is closed" in str(e):
+                self.log(f"Session closed while dismissing {job_id}. This usually happens if the search was stopped or the process was terminated.", level='warning')
+            else:
+                self.log(f"Error dismissing job: {e}", level='error')
             return None
             
     def undo_dismiss(self, job_id):
