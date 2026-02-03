@@ -323,6 +323,90 @@ async function loadBlocklists(manual = false) {
     }
 }
 
+// ========== BLOCKLIST SUGGESTIONS ==========
+
+async function loadBlocklistSuggestions(type) {
+    const modal = document.getElementById('suggestions-modal');
+    modal.classList.remove('hidden');
+
+    document.getElementById('suggestions-title').textContent = type === 'job_title' ? 'Job Title Suggestions' : 'Company Suggestions';
+    const container = document.getElementById('suggestions-results-content');
+    container.innerHTML = '<div class="text-gray-500 italic p-4">Analyzing history...</div>';
+
+    try {
+        const res = await apiFetch(`/api/blocklist/suggestions`);
+        if (!res.ok) throw new Error('Failed to fetch suggestions');
+        const data = await res.json();
+
+        const suggestions = type === 'job_title' ? data.job_titles : data.companies;
+
+        if (!suggestions || suggestions.length === 0) {
+            container.innerHTML = '<div class="text-gray-500 italic p-4">No suggestions found yet. Dismiss more jobs to see recommendations!</div>';
+            return;
+        }
+
+        container.innerHTML = suggestions.map(item => {
+            const displayValue = type === 'job_title' ? item.item : item.display_name;
+            const blockValue = item.item;
+
+            return `
+                <div class="flex items-center justify-between p-3 bg-gray-900/40 border border-gray-700/50 rounded-lg hover:border-gray-600 transition-all">
+                    <div class="flex-1 min-w-0 mr-4">
+                        <div class="text-sm font-bold text-white truncate">${escapeHtml(displayValue)}</div>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-tighter font-black">${item.count} dismissals</div>
+                    </div>
+                    <button onclick="addFromSuggestion('${type}', '${blockValue.replace(/'/g, "\\'")}')" 
+                            class="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-md text-[10px] font-bold uppercase transition-all whitespace-nowrap">
+                        Add Block
+                    </button>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error("Suggestions error:", e);
+        container.innerHTML = '<div class="text-red-400 p-4">Error loading suggestions</div>';
+    }
+}
+
+function closeSuggestionsModal() {
+    document.getElementById('suggestions-modal').classList.add('hidden');
+}
+
+async function addFromSuggestion(type, value) {
+    try {
+        const filename = type === 'job_title' ? 'blocklist.txt' : 'blocklist_companies.txt';
+
+        // 1. Get current list
+        const resList = await apiFetch(`/api/blocklist?filename=${filename}`);
+        if (!resList.ok) throw new Error("Fetch fail");
+        const data = await resList.json();
+        let items = data.content.split('\n').filter(l => l.trim());
+
+        // 2. Add new item if not present
+        if (!items.includes(value)) {
+            items.push(value);
+        }
+
+        // 3. Save back
+        const resSave = await apiFetch('/api/blocklist', {
+            method: 'POST',
+            body: JSON.stringify({ filename, content: items.join('\n') })
+        });
+
+        if (resSave.ok) {
+            showToast(`Added to blocklist`);
+            loadBlocklists(); // Refresh lists
+            // Refresh suggestions to remove the one just added
+            loadBlocklistSuggestions(type);
+        } else {
+            showToast('Failed to add block', true);
+        }
+    } catch (e) {
+        console.error("Add suggestion failed", e);
+        showToast('Error adding block', true);
+    }
+}
+
 function renderBlocklist(type) {
     const list = blocklistState[type];
     const containerId = type === 'job_title' ? 'titles-list-container' : 'companies-list-container';
