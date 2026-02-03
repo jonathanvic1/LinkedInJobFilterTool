@@ -288,20 +288,72 @@
                     <!-- Keywords & Location (Main Inputs) -->
                     <div class="lg:col-span-8 space-y-6">
                         <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
+                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                <div class="lg:col-span-4">
                                     <label
                                         class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Keywords</label>
                                     <input type="text" id="keywords"
                                         class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                         placeholder="e.g. Software Engineer">
                                 </div>
-                                <div>
+                                <div class="lg:col-span-3">
                                     <label
                                         class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Location</label>
                                     <input type="text" id="location" value="Canada"
                                         class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                         placeholder="e.g. Toronto, Canada">
+                                </div>
+                                <div class="lg:col-span-5">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label
+                                            class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Market
+                                            Pulse</label>
+                                        <button onclick="loadMarketPulse()"
+                                            class="p-1 hover:bg-gray-700 rounded-md transition-all text-gray-500 hover:text-blue-400"
+                                            title="Refresh Stats">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                                </path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3" id="market-pulse-container">
+                                        <!-- Canada Section (Compact) -->
+                                        <div
+                                            class="bg-gray-900/40 border border-gray-700/30 rounded-lg p-2.5 flex flex-col justify-center space-y-1">
+                                            <span class="text-[9px] font-bold text-gray-500 uppercase">Canada</span>
+                                            <div class="flex justify-between items-baseline">
+                                                <span class="text-[10px] text-gray-400">24h</span>
+                                                <span class="text-xs font-mono font-bold text-blue-400"
+                                                    id="pulse-canada-24h">...</span>
+                                            </div>
+                                        </div>
+                                        <!-- Toronto Section (Compact) -->
+                                        <div
+                                            class="bg-gray-900/40 border border-gray-700/30 rounded-lg p-2.5 flex flex-col justify-center space-y-1">
+                                            <span class="text-[9px] font-bold text-gray-500 uppercase">Toronto</span>
+                                            <div class="flex justify-between items-baseline">
+                                                <span class="text-[10px] text-gray-400">24h</span>
+                                                <span class="text-xs font-mono font-bold text-green-400"
+                                                    id="pulse-toronto-24h">...</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- 7d markers (minimal) -->
+                                    <div class="flex items-center justify-between mt-2 px-1">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-[9px] text-gray-500">7d Canada:</span>
+                                            <span class="text-[10px] font-mono text-blue-300"
+                                                id="pulse-canada-7d">...</span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-[9px] text-gray-500">7d Toronto:</span>
+                                            <span class="text-[10px] font-mono text-green-300"
+                                                id="pulse-toronto-7d">...</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -401,87 +453,8 @@
                     </div>
                 </div>
 
-                <!-- Terminal/Activity Log & Market Pulse -->
-                <div class="lg:col-span-4 flex flex-col space-y-6 min-h-[500px]">
-                    <!-- Market Pulse -->
-                    <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden flex flex-col">
-                        <div
-                            class="px-4 py-3 border-b border-gray-700 bg-gray-900/50 flex justify-between items-center">
-                            <div class="flex items-center space-x-2">
-                                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                </svg>
-                                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Market
-                                    Pulse</span>
-                            </div>
-                            <button onclick="loadMarketPulse()"
-                                class="p-1 hover:bg-gray-700 rounded-md transition-all text-gray-500 hover:text-blue-400"
-                                title="Refresh Stats">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                                    </path>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="p-5">
-                            <div class="grid grid-cols-2 gap-4" id="market-pulse-container">
-                                <!-- Canada Section -->
-                                <div class="space-y-3">
-                                    <div class="flex items-center space-x-2 mb-1">
-                                        <span class="text-[10px] font-bold text-gray-500 uppercase">Canada</span>
-                                        <div class="h-px flex-1 bg-gray-700/50"></div>
-                                    </div>
-                                    <div class="grid grid-cols-1 gap-2">
-                                        <div
-                                            class="bg-gray-900/40 border border-gray-700/30 rounded-lg px-3 py-2 flex justify-between items-center group hover:border-blue-500/30 transition-all">
-                                            <span class="text-[10px] text-gray-400">Past 24h</span>
-                                            <span class="text-sm font-mono font-bold text-blue-400"
-                                                id="pulse-canada-24h">...</span>
-                                        </div>
-                                        <div
-                                            class="bg-gray-900/40 border border-gray-700/30 rounded-lg px-3 py-2 flex justify-between items-center group hover:border-blue-500/30 transition-all">
-                                            <span class="text-[10px] text-gray-400">Past 7d</span>
-                                            <span class="text-sm font-mono font-bold text-blue-300"
-                                                id="pulse-canada-7d">...</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Toronto Section -->
-                                <div class="space-y-3">
-                                    <div class="flex items-center space-x-2 mb-1">
-                                        <span class="text-[10px] font-bold text-gray-500 uppercase">Toronto</span>
-                                        <div class="h-px flex-1 bg-gray-700/50"></div>
-                                    </div>
-                                    <div class="grid grid-cols-1 gap-2">
-                                        <div
-                                            class="bg-gray-900/40 border border-gray-700/30 rounded-lg px-3 py-2 flex justify-between items-center group hover:border-green-500/30 transition-all">
-                                            <span class="text-[10px] text-gray-400">Past 24h</span>
-                                            <span class="text-sm font-mono font-bold text-green-400"
-                                                id="pulse-toronto-24h">...</span>
-                                        </div>
-                                        <div
-                                            class="bg-gray-900/40 border border-gray-700/30 rounded-lg px-3 py-2 flex justify-between items-center group hover:border-green-500/30 transition-all">
-                                            <span class="text-[10px] text-gray-400">Past 7d</span>
-                                            <span class="text-sm font-mono font-bold text-green-300"
-                                                id="pulse-toronto-7d">...</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mt-4 pt-4 border-t border-gray-700/50 flex justify-between items-center">
-                                <span class="text-[9px] text-gray-500 italic">Insights updated every 30 mins</span>
-                                <div class="flex items-center space-x-1">
-                                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Live
-                                        Market Data</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+                <!-- Terminal/Activity Log -->
+                <div class="lg:col-span-4 flex flex-col min-h-[500px]">
                     <!-- Activity Log -->
                     <div
                         class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl flex flex-col h-full overflow-hidden">

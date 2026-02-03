@@ -1073,7 +1073,7 @@ class LinkedInScraper:
         for loc in locations:
             results[loc] = {}
             # Get Geo ID
-            geo_id, is_refined = self.get_geo_id(loc)
+            geo_id, is_refined = self.resolve_geo_id(loc)
             
             for label, tf in time_filters.items():
                 try:
