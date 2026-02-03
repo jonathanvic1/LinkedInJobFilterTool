@@ -11,6 +11,8 @@ import json
 import logging
 import argparse
 import re
+import difflib
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from time import sleep, time
 from typing import List, Dict, Any, Optional
