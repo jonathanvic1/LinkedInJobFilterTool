@@ -419,259 +419,141 @@
                                 </button>
                             </div>
 
-                            <div class="flex-1 flex flex-col space-y-4" id="market-pulse-results">
+                            <div class="flex-1 flex flex-col space-y-3" id="market-pulse-results">
                                 <!-- Canada Section -->
                                 <div
-                                    class="bg-gray-900 border border-gray-700/50 rounded-xl p-4 overflow-hidden relative flex-1 flex flex-col justify-center">
-                                    <div class="flex justify-between items-center mb-3 relative z-10">
+                                    class="bg-gray-900 border border-gray-700/50 rounded-lg p-3 overflow-hidden relative">
+                                    <div class="flex justify-between items-center mb-2 relative z-10">
                                         <span
-                                            class="text-xs font-black text-blue-400 uppercase tracking-tighter">Canada</span>
+                                            class="text-[10px] font-black text-blue-400 uppercase tracking-tighter">Canada</span>
                                         <div class="flex items-center space-x-1">
                                             <div class="w-1 h-1 bg-blue-500 rounded-full animate-pulse"></div>
-                                            <span class="text-[10px] text-gray-500 font-mono">Live Pulse</span>
+                                            <span class="text-[9px] text-gray-500 font-mono">Live</span>
                                         </div>
                                     </div>
 
-                                    <div class="grid grid-cols-2 gap-4 relative z-10">
+                                    <div class="grid grid-cols-3 gap-2 relative z-10">
                                         <!-- Last 24h -->
-                                        <div
-                                            class="space-y-1.5 p-3 bg-gray-800/40 rounded-lg border border-gray-700/30">
-                                            <span
-                                                class="text-[9px] text-gray-500 uppercase font-black tracking-widest">Last
-                                                24h</span>
-                                            <div class="text-2xl font-black text-white tracking-tighter"
+                                        <div class="p-2 bg-gray-800/50 rounded border border-gray-700/30">
+                                            <span class="text-[8px] text-gray-500 uppercase font-black">24h</span>
+                                            <div class="text-lg font-black text-white tracking-tighter"
                                                 id="pulse-canada-24h">...</div>
-                                            <div
-                                                class="flex flex-col space-y-0.5 mt-1 border-t border-gray-700/50 pt-1.5">
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Easy Apply</span>
-                                                    <span class="text-blue-400" id="mix-canada-24h-ea">...</span>
-                                                </div>
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Remote</span>
-                                                    <span class="text-purple-400" id="mix-canada-24h-rm">...</span>
-                                                </div>
+                                            <div class="text-[8px] text-gray-500 mt-0.5">
+                                                <span class="text-blue-400" id="mix-canada-24h-ea">...</span> EA · <span
+                                                    class="text-purple-400" id="mix-canada-24h-rm">...</span> RM
                                             </div>
                                         </div>
                                         <!-- 3 Days -->
-                                        <div
-                                            class="space-y-1.5 p-3 bg-gray-800/40 rounded-lg border border-gray-700/30">
-                                            <span
-                                                class="text-[9px] text-gray-500 uppercase font-black tracking-widest">3
-                                                Days</span>
-                                            <div class="text-2xl font-black text-blue-200/80 tracking-tighter"
+                                        <div class="p-2 bg-gray-800/50 rounded border border-gray-700/30">
+                                            <span class="text-[8px] text-gray-500 uppercase font-black">3d</span>
+                                            <div class="text-lg font-black text-blue-200/80 tracking-tighter"
                                                 id="pulse-canada-3d">...</div>
-                                            <div
-                                                class="flex flex-col space-y-0.5 mt-1 border-t border-gray-700/50 pt-1.5">
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Easy Apply</span>
-                                                    <span class="text-blue-400" id="mix-canada-3d-ea">...</span>
-                                                </div>
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Remote</span>
-                                                    <span class="text-purple-400" id="mix-canada-3d-rm">...</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- 5 Days -->
-                                        <div
-                                            class="space-y-1.5 p-3 bg-gray-800/40 rounded-lg border border-gray-700/30">
-                                            <span
-                                                class="text-[9px] text-gray-500 uppercase font-black tracking-widest">5
-                                                Days</span>
-                                            <div class="text-2xl font-black text-blue-300/60 tracking-tighter"
-                                                id="pulse-canada-5d">...</div>
-                                            <div
-                                                class="flex flex-col space-y-0.5 mt-1 border-t border-gray-700/50 pt-1.5">
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Easy Apply</span>
-                                                    <span class="text-blue-400" id="mix-canada-5d-ea">...</span>
-                                                </div>
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Remote</span>
-                                                    <span class="text-purple-400" id="mix-canada-5d-rm">...</span>
-                                                </div>
+                                            <div class="text-[8px] text-gray-500 mt-0.5">
+                                                <span class="text-blue-400" id="mix-canada-3d-ea">...</span> EA · <span
+                                                    class="text-purple-400" id="mix-canada-3d-rm">...</span> RM
                                             </div>
                                         </div>
                                         <!-- 7 Days -->
-                                        <div
-                                            class="space-y-1.5 p-3 bg-gray-800/40 rounded-lg border border-gray-700/30">
-                                            <span
-                                                class="text-[9px] text-gray-500 uppercase font-black tracking-widest">7
-                                                Days</span>
-                                            <div class="text-2xl font-black text-blue-400/40 tracking-tighter"
+                                        <div class="p-2 bg-gray-800/50 rounded border border-gray-700/30">
+                                            <span class="text-[8px] text-gray-500 uppercase font-black">7d</span>
+                                            <div class="text-lg font-black text-blue-400/60 tracking-tighter"
                                                 id="pulse-canada-7d">...</div>
-                                            <div
-                                                class="flex flex-col space-y-0.5 mt-1 border-t border-gray-700/50 pt-1.5">
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Easy Apply</span>
-                                                    <span class="text-blue-400" id="mix-canada-7d-ea">...</span>
-                                                </div>
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Remote</span>
-                                                    <span class="text-purple-400" id="mix-canada-7d-rm">...</span>
-                                                </div>
+                                            <div class="text-[8px] text-gray-500 mt-0.5">
+                                                <span class="text-blue-400" id="mix-canada-7d-ea">...</span> EA · <span
+                                                    class="text-purple-400" id="mix-canada-7d-rm">...</span> RM
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <!-- Subtle glow effect -->
-                                    <div
-                                        class="absolute -right-4 -bottom-4 w-32 h-32 bg-blue-600/5 blur-3xl rounded-full">
                                     </div>
                                 </div>
 
                                 <!-- Toronto Section -->
                                 <div
-                                    class="bg-gray-900 border border-gray-700/50 rounded-xl p-4 overflow-hidden relative flex-1 flex flex-col justify-center">
-                                    <div class="flex justify-between items-center mb-3 relative z-10">
+                                    class="bg-gray-900 border border-gray-700/50 rounded-lg p-3 overflow-hidden relative">
+                                    <div class="flex justify-between items-center mb-2 relative z-10">
                                         <span
-                                            class="text-xs font-black text-green-400 uppercase tracking-tighter">Toronto</span>
+                                            class="text-[10px] font-black text-green-400 uppercase tracking-tighter">Toronto</span>
                                         <div class="flex items-center space-x-1">
                                             <div class="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
-                                            <span class="text-[10px] text-gray-500 font-mono">Live Pulse</span>
+                                            <span class="text-[9px] text-gray-500 font-mono">Live</span>
                                         </div>
                                     </div>
 
-                                    <div class="grid grid-cols-2 gap-4 relative z-10">
-                                        <div
-                                            class="space-y-1.5 p-3 bg-gray-800/40 rounded-lg border border-gray-700/30">
-                                            <span
-                                                class="text-[9px] text-gray-500 uppercase font-black tracking-widest">Last
-                                                24h</span>
-                                            <div class="text-2xl font-black text-white tracking-tighter"
+                                    <div class="grid grid-cols-3 gap-2 relative z-10">
+                                        <!-- Last 24h -->
+                                        <div class="p-2 bg-gray-800/50 rounded border border-gray-700/30">
+                                            <span class="text-[8px] text-gray-500 uppercase font-black">24h</span>
+                                            <div class="text-lg font-black text-white tracking-tighter"
                                                 id="pulse-toronto-24h">...</div>
-                                            <div
-                                                class="flex flex-col space-y-0.5 mt-1 border-t border-gray-700/50 pt-1.5">
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Easy Apply</span>
-                                                    <span class="text-blue-400" id="mix-toronto-24h-ea">...</span>
-                                                </div>
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Remote</span>
-                                                    <span class="text-purple-400" id="mix-toronto-24h-rm">...</span>
-                                                </div>
+                                            <div class="text-[8px] text-gray-500 mt-0.5">
+                                                <span class="text-blue-400" id="mix-toronto-24h-ea">...</span> EA ·
+                                                <span class="text-purple-400" id="mix-toronto-24h-rm">...</span> RM
                                             </div>
                                         </div>
-                                        <div
-                                            class="space-y-1.5 p-3 bg-gray-800/40 rounded-lg border border-gray-700/30">
-                                            <span
-                                                class="text-[9px] text-gray-500 uppercase font-black tracking-widest">3
-                                                Days</span>
-                                            <div class="text-2xl font-black text-green-200/80 tracking-tighter"
+                                        <!-- 3 Days -->
+                                        <div class="p-2 bg-gray-800/50 rounded border border-gray-700/30">
+                                            <span class="text-[8px] text-gray-500 uppercase font-black">3d</span>
+                                            <div class="text-lg font-black text-green-200/80 tracking-tighter"
                                                 id="pulse-toronto-3d">...</div>
-                                            <div
-                                                class="flex flex-col space-y-0.5 mt-1 border-t border-gray-700/50 pt-1.5">
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Easy Apply</span>
-                                                    <span class="text-blue-400" id="mix-toronto-3d-ea">...</span>
-                                                </div>
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Remote</span>
-                                                    <span class="text-purple-400" id="mix-toronto-3d-rm">...</span>
-                                                </div>
+                                            <div class="text-[8px] text-gray-500 mt-0.5">
+                                                <span class="text-blue-400" id="mix-toronto-3d-ea">...</span> EA · <span
+                                                    class="text-purple-400" id="mix-toronto-3d-rm">...</span> RM
                                             </div>
                                         </div>
-                                        <div
-                                            class="space-y-1.5 p-3 bg-gray-800/40 rounded-lg border border-gray-700/30">
-                                            <span
-                                                class="text-[9px] text-gray-500 uppercase font-black tracking-widest">5
-                                                Days</span>
-                                            <div class="text-2xl font-black text-green-300/60 tracking-tighter"
-                                                id="pulse-toronto-5d">...</div>
-                                            <div
-                                                class="flex flex-col space-y-0.5 mt-1 border-t border-gray-700/50 pt-1.5">
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Easy Apply</span>
-                                                    <span class="text-blue-400" id="mix-toronto-5d-ea">...</span>
-                                                </div>
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Remote</span>
-                                                    <span class="text-purple-400" id="mix-toronto-5d-rm">...</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div
-                                            class="space-y-1.5 p-3 bg-gray-800/40 rounded-lg border border-gray-700/30">
-                                            <span
-                                                class="text-[9px] text-gray-500 uppercase font-black tracking-widest">7
-                                                Days</span>
-                                            <div class="text-2xl font-black text-green-400/40 tracking-tighter"
+                                        <!-- 7 Days -->
+                                        <div class="p-2 bg-gray-800/50 rounded border border-gray-700/30">
+                                            <span class="text-[8px] text-gray-500 uppercase font-black">7d</span>
+                                            <div class="text-lg font-black text-green-400/60 tracking-tighter"
                                                 id="pulse-toronto-7d">...</div>
-                                            <div
-                                                class="flex flex-col space-y-0.5 mt-1 border-t border-gray-700/50 pt-1.5">
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Easy Apply</span>
-                                                    <span class="text-blue-400" id="mix-toronto-7d-ea">...</span>
-                                                </div>
-                                                <div
-                                                    class="flex justify-between text-[9px] font-black uppercase tracking-tighter">
-                                                    <span class="text-gray-500">Remote</span>
-                                                    <span class="text-purple-400" id="mix-toronto-7d-rm">...</span>
-                                                </div>
+                                            <div class="text-[8px] text-gray-500 mt-0.5">
+                                                <span class="text-blue-400" id="mix-toronto-7d-ea">...</span> EA · <span
+                                                    class="text-purple-400" id="mix-toronto-7d-rm">...</span> RM
                                             </div>
                                         </div>
                                     </div>
-
-                                    <!-- Subtle glow effect -->
-                                    <div
-                                        class="absolute -right-4 -bottom-4 w-32 h-32 bg-green-600/5 blur-3xl rounded-full">
-                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bottom Row: Activity Log -->
-                <div class="w-full">
-                    <div
-                        class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl flex flex-col min-h-[400px] overflow-hidden">
-                        <!-- Terminal Header -->
-                        <div
-                            class="px-4 py-3 border-b border-gray-700 bg-gray-900/50 flex justify-between items-center">
-                            <div class="flex items-center space-x-4">
-                                <div class="flex space-x-1.5">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
-                                    <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
-                                    <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
-                                </div>
-                                <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Activity
-                                    Log</span>
+                            <!-- Subtle glow effect -->
+                            <div class="absolute -right-4 -bottom-4 w-32 h-32 bg-green-600/5 blur-3xl rounded-full">
                             </div>
-                            <button onclick="clearDashboardLogs()"
-                                class="text-[10px] px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700 rounded-md transition-all flex items-center space-x-1.5 group">
-                                <svg class="w-3 h-3 text-gray-500 group-hover:text-red-400 transition-colors"
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                                <span>Clear</span>
-                            </button>
-                        </div>
-                        <!-- Terminal Content -->
-                        <div id="logs"
-                            class="p-6 overflow-y-auto terminal flex-1 font-mono text-xs space-y-1.5 leading-relaxed bg-gray-900/40 scroll-smooth custom-scrollbar">
-                            <div class="text-gray-600 italic">Waiting for command...</div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Bottom Row: Activity Log -->
+        <div class="w-full">
+            <div
+                class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl flex flex-col min-h-[400px] overflow-hidden">
+                <!-- Terminal Header -->
+                <div class="px-4 py-3 border-b border-gray-700 bg-gray-900/50 flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex space-x-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500/80"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/80"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500/80"></div>
+                        </div>
+                        <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Activity
+                            Log</span>
+                    </div>
+                    <button onclick="clearDashboardLogs()"
+                        class="text-[10px] px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700 rounded-md transition-all flex items-center space-x-1.5 group">
+                        <svg class="w-3 h-3 text-gray-500 group-hover:text-red-400 transition-colors" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        <span>Clear</span>
+                    </button>
+                </div>
+                <!-- Terminal Content -->
+                <div id="logs"
+                    class="p-6 overflow-y-auto terminal flex-1 font-mono text-xs space-y-1.5 leading-relaxed bg-gray-900/40 scroll-smooth custom-scrollbar">
+                    <div class="text-gray-600 italic">Waiting for command...</div>
+                </div>
+            </div>
+        </div>
+        </div>
         </div>
 
         <!-- Searches Tab -->

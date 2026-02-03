@@ -1063,7 +1063,6 @@ class LinkedInScraper:
         time_filters = {
             "24h": "r86400",
             "3d": "r259200",
-            "5d": "r432000",
             "7d": "r604800"
         }
         

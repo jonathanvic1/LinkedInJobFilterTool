@@ -1721,13 +1721,11 @@ async function loadMarketPulse() {
         'Canada': {
             '24h': { total: 'pulse-canada-24h', ea: 'mix-canada-24h-ea', rm: 'mix-canada-24h-rm' },
             '3d': { total: 'pulse-canada-3d', ea: 'mix-canada-3d-ea', rm: 'mix-canada-3d-rm' },
-            '5d': { total: 'pulse-canada-5d', ea: 'mix-canada-5d-ea', rm: 'mix-canada-5d-rm' },
             '7d': { total: 'pulse-canada-7d', ea: 'mix-canada-7d-ea', rm: 'mix-canada-7d-rm' }
         },
         'Toronto, Ontario, Canada': {
             '24h': { total: 'pulse-toronto-24h', ea: 'mix-toronto-24h-ea', rm: 'mix-toronto-24h-rm' },
             '3d': { total: 'pulse-toronto-3d', ea: 'mix-toronto-3d-ea', rm: 'mix-toronto-3d-rm' },
-            '5d': { total: 'pulse-toronto-5d', ea: 'mix-toronto-5d-ea', rm: 'mix-toronto-5d-rm' },
             '7d': { total: 'pulse-toronto-7d', ea: 'mix-toronto-7d-ea', rm: 'mix-toronto-7d-rm' }
         }
     };
