@@ -15,6 +15,7 @@ from time import sleep, time
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlencode
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 
 from curl_cffi import requests
 from database import db

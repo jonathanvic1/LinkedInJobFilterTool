@@ -382,13 +382,13 @@ def save_blocklist(update: BlocklistUpdate, request: Request):
 def get_blocklist_suggestions(request: Request):
     user_id = get_user_id(request)
     
-    # 1. Get raw history (limit to most recent 2500 for performance)
-    raw_data = db.get_raw_dismissed_data(user_id, limit=2500)
+    # 1. Get request history (optimize: limit to 10k, enough for good suggestions)
+    raw_data = db.get_raw_dismissed_data(user_id, limit=10000)
     if not raw_data:
         return {"job_titles": [], "companies": [], "total_eligible_job_titles": 0, "total_eligible_companies": 0}
 
     # 2. Get current blocklists to filter
-    current_titles = [t.lower().strip() for t in db.get_blocklist("job_title", user_id)]
+    current_titles = [t.lower().strip() for t in db.get_blocklist("job_title", user_id) if t.strip()]
     current_companies = []
     for c in db.get_blocklist("company_linkedin", user_id):
         cleaned = c.lower().strip()
@@ -400,16 +400,14 @@ def get_blocklist_suggestions(request: Request):
     company_counts = {}
     company_name_map = {} # map slug to display name
 
-    def is_title_effectively_blocked(title, blocklist):
-        if not title: return True
-        t_low = title.lower()
-        for b in blocklist:
-            if not b: continue
-            # Use same word-boundary logic as scraper
-            pattern = rf"\b{re.escape(b.lower())}\b"
-            if re.search(pattern, t_low):
-                return True
-        return False
+    # Optimize: Pre-compile one regex for all title blockers
+    title_block_pattern = None
+    if current_titles:
+        # Sort by length desc to match longest first (though regex engine handles usually)
+        # Create pattern: \b(term1|term2|...)\b
+        escaped_terms = [re.escape(t) for t in current_titles]
+        pattern_str = r'\b(' + '|'.join(escaped_terms) + r')\b'
+        title_block_pattern = re.compile(pattern_str, re.IGNORECASE)
 
     for row in raw_data:
         title = row.get('title')
@@ -418,7 +416,8 @@ def get_blocklist_suggestions(request: Request):
         
         if title:
             t_norm = title.strip()
-            if not is_title_effectively_blocked(t_norm, current_titles):
+            # Fast Check using compiled regex
+            if not (title_block_pattern and title_block_pattern.search(t_norm)):
                 title_counts[t_norm] = title_counts.get(t_norm, 0) + 1
         
         if co_url:
