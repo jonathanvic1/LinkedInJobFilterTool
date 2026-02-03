@@ -67,6 +67,18 @@
             vertical-align: middle;
         }
 
+        /* Hide numeric input spinners - Premium Look */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+            /* Firefox */
+        }
+
         /* Custom Premium Checkbox */
         .custom-checkbox {
             appearance: none;
@@ -1108,7 +1120,7 @@
                             </label>
                             <label class="flex items-center space-x-3 cursor-pointer">
                                 <input type="checkbox" id="edit-search-relevant" class="custom-checkbox">
-                                <span class="text-sm text-gray-300">Exclude Non-Relevant</span>
+                                <span class="text-sm text-gray-300">Sort by Most Relevant</span>
                             </label>
                         </div>
                     </div>
