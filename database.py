@@ -117,25 +117,48 @@ class Database:
             print(f"   ⚠️ DB Error (save_dismissed_job): {e}")
 
     def batch_save_dismissed_jobs(self, jobs_data, history_id=None, silent=False):
-        """Save multiple dismissed jobs to Supabase history."""
+        """Save multiple dismissed jobs to Supabase history, only if they don't exist yet."""
         if not self.client or not jobs_data: return
         
-        # Filter out None values and clean data
-        clean_data = []
+        # 1. Clean data and collect IDs
+        clean_data_map = {}
         for j in jobs_data:
             if j and j.get('job_id'):
                 if history_id:
                     j['history_id'] = history_id
-                clean_data.append(j)
+                clean_data_map[j['job_id']] = j
         
-        if not clean_data:
+        if not clean_data_map:
+            return
+
+        # 2. Check which IDs already exist in Supabase to avoid redundant writes
+        all_ids = list(clean_data_map.keys())
+        existing_ids = set()
+        try:
+            # Check in chunks of 100 to avoid URL length issues
+            for i in range(0, len(all_ids), 100):
+                chunk = all_ids[i:i+100]
+                response = self.client.table("dismissed_jobs").select("job_id").in_("job_id", chunk).execute()
+                if response.data:
+                    for r in response.data:
+                        existing_ids.add(r['job_id'])
+        except Exception as e:
+            if not silent:
+                print(f"   ⚠️ DB Error (pre-save check): {e}")
+
+        # 3. Filter out existing jobs
+        new_jobs = [j for jid, j in clean_data_map.items() if jid not in existing_ids]
+        
+        if not new_jobs:
+            if not silent:
+                print("   ✨ All jobs already recorded in Supabase. Skipping batch save.")
             return
             
         if not silent:
-            print(f"   💾 Saving {len(clean_data)} jobs to Supabase history one-by-one...")
+            print(f"   💾 Saving {len(new_jobs)} new jobs to Supabase history (skipped {len(existing_ids)} duplicates)...")
         
         success_count = 0
-        for job in clean_data:
+        for job in new_jobs:
             title = job.get('title', 'Unknown Title')
             job_id = job.get('job_id')
             
@@ -149,12 +172,14 @@ class Database:
                     print(f"      ✅ Saved: {title} (ID: {job_id})")
                 success_count += 1
             except Exception as e:
-                print(f"      ❌ Failed to save {title}: {e}")
+                if not silent:
+                    print(f"      ❌ Failed to save {title}: {e}")
         
-        if success_count == len(clean_data):
-            print(f"   ✨ All {len(clean_data)} jobs successfully recorded in history.")
-        else:
-            print(f"   📊 Saved {success_count}/{len(clean_data)} jobs to history.")
+        if not silent:
+            if success_count == len(new_jobs):
+                print(f"   ✨ All {len(new_jobs)} new jobs successfully recorded.")
+            else:
+                print(f"   📊 Saved {success_count}/{len(new_jobs)} new jobs.")
 
     def get_unique_company_links(self, user_id=None):
         """Fetch all unique company URLs from the dismissal history by paging through all records."""
