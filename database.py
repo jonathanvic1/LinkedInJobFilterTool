@@ -116,8 +116,8 @@ class Database:
         except Exception as e:
             print(f"   ⚠️ DB Error (save_dismissed_job): {e}")
 
-    def batch_save_dismissed_jobs(self, jobs_data, history_id=None):
-        """Save multiple dismissed jobs to Supabase individually for maximum reliability and visibility."""
+    def batch_save_dismissed_jobs(self, jobs_data, history_id=None, silent=False):
+        """Save multiple dismissed jobs to Supabase history."""
         if not self.client or not jobs_data: return
         
         # Filter out None values and clean data
@@ -131,7 +131,8 @@ class Database:
         if not clean_data:
             return
             
-        print(f"   💾 Saving {len(clean_data)} jobs to Supabase history one-by-one...")
+        if not silent:
+            print(f"   💾 Saving {len(clean_data)} jobs to Supabase history one-by-one...")
         
         success_count = 0
         for job in clean_data:
@@ -144,7 +145,8 @@ class Database:
             try:
                 with self._lock:
                     self._retry_request(_execute)
-                print(f"      ✅ Saved: {title} (ID: {job_id})")
+                if not silent:
+                    print(f"      ✅ Saved: {title} (ID: {job_id})")
                 success_count += 1
             except Exception as e:
                 print(f"      ❌ Failed to save {title}: {e}")

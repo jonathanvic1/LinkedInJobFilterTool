@@ -1041,10 +1041,9 @@ class LinkedInScraper:
         (total_processed, total_dismissed, total_skipped, total_reposted, 
          total_easy, total_early, total_reviewing, total_applied, total_viewed), all_dismissed_jobs = self.process_page_result(full_job_list)
 
-        # 4. Batch Save all dismissed jobs to Supabase
+        # 4. Batch Save all dismissed jobs to Supabase (silently to avoid log noise)
         if all_dismissed_jobs:
-            self.log(f"Batch saving {len(all_dismissed_jobs)} dismissed jobs to Supabase history...")
-            db.batch_save_dismissed_jobs(all_dismissed_jobs, history_id=self.history_id)
+            db.batch_save_dismissed_jobs(all_dismissed_jobs, history_id=self.history_id, silent=True)
         
         print(f"📊 Stats: Reposted: {total_reposted}, Easy: {total_easy}, Early: {total_early}, Reviewing: {total_reviewing}, Applied: {total_applied}, Viewed: {total_viewed}")
         
