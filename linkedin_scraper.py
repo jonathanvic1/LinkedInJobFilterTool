@@ -939,7 +939,7 @@ class LinkedInScraper:
             future_to_job = {executor.submit(self._process_single_job, job, dismissed_ids): job for job in page_jobs}
             
             # Using progress bar while aggregating results
-            for future in tqdm(concurrent.futures.as_completed(future_to_job), total=len(page_jobs), desc="Filtering Jobs", leave=False):
+            for future in tqdm(as_completed(future_to_job), total=len(page_jobs), desc="Filtering Jobs", leave=False):
                 processed += 1
                 try:
                     job_data, is_dismissed, is_skipped = future.result()

@@ -642,7 +642,7 @@ class Database:
 
                 query = self.client.table("dismissed_jobs").select("title, company, company_linkedin").range(offset, offset + current_page_size - 1)
                 # Order by latest first so we get the most recent dismissals
-                query = query.order("id", desc=True)
+                query = query.order("dismissed_at", desc=True)
                 
                 if user_id:
                     query = query.eq("user_id", user_id)
