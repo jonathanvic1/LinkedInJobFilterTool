@@ -14,7 +14,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from time import sleep, time
 from typing import List, Dict, Any, Optional
-from urllib.parse import urlencode
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
