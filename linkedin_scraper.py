@@ -640,7 +640,7 @@ class LinkedInScraper:
                     job_posting_urn = card.get('*jobPosting', '')
 
                 if start == 0 and len(page_jobs) == 0:
-                     self.log(f"DEBUG: Sample Job URN: {job_posting_urn}", level='info')
+                     pass
 
                 job_id = job_posting_urn.split(':')[-1]
                 
@@ -764,7 +764,7 @@ class LinkedInScraper:
                     if dismiss_action:
                         dismiss_urn = dismiss_action.get('jobPostingRelevanceFeedbackUrn')
                         if start == 0 and len(page_jobs) == 0:
-                             self.log(f"DEBUG: Sample Dismiss URN: {dismiss_urn}", level='info')
+                             pass
                         # Check LinkedIn-native dismissal status
                         feedback_obj = urn_map.get(dismiss_urn)
                         if feedback_obj and feedback_obj.get('dismissed') is True:
@@ -994,7 +994,6 @@ class LinkedInScraper:
         full_job_list = []
         
         # 1. Fetch First Page (Synchronous) to get Total Count
-        print("🚀 Fetching Page 0 to determine scope...")
         page0_jobs, total_jobs = self.fetch_page(0, count=25, geo_id=geo_id, is_refined=is_refined, sort_by=sort_by, time_range=time_range)
         
         if not page0_jobs:
