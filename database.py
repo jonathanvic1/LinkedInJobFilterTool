@@ -772,4 +772,4 @@ class Database:
             print(f"   ⚠️ DB Error (delete_search_history): {e}")
             return False
 
- db = Database()
+db = Database()
