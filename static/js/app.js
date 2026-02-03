@@ -339,29 +339,44 @@ async function loadBlocklistSuggestions(type) {
         const data = await res.json();
 
         const suggestions = type === 'job_title' ? data.job_titles : data.companies;
+        const totalEligible = type === 'job_title' ? data.total_eligible_job_titles : data.total_eligible_companies;
 
         if (!suggestions || suggestions.length === 0) {
-            container.innerHTML = '<div class="text-gray-500 italic p-4">No suggestions found yet. Dismiss more jobs to see recommendations!</div>';
+            container.innerHTML = '<div class="text-gray-500 italic p-4">No suggestions found yet (min. 5 dismissals). Dismiss more jobs to see recommendations!</div>';
             return;
         }
 
-        container.innerHTML = suggestions.map(item => {
+        const summaryHtml = `
+            <div class="px-4 py-2 mb-2 bg-blue-600/10 border border-blue-600/20 rounded-lg text-[10px] font-bold uppercase tracking-widest text-blue-400 flex justify-between items-center">
+                <span>Showing Top ${suggestions.length} Suggestions</span>
+                <span class="opacity-70">${totalEligible} Total Candidates</span>
+            </div>
+            ${type === 'company' ? '<div class="px-4 mb-4 text-[9px] text-gray-500 italic">Right-click any company to open its LinkedIn page</div>' : ''}
+        `;
+
+        container.innerHTML = summaryHtml + suggestions.map(item => {
             const displayValue = type === 'job_title' ? item.item : item.display_name;
             const blockValue = item.item;
+            const contextMenu = type === 'company' ? `oncontextmenu="event.preventDefault(); window.open('https://www.linkedin.com/company/${blockValue}', '_blank'); return false;"` : '';
 
             return `
-                <div class="flex items-center justify-between p-3 bg-gray-900/40 border border-gray-700/50 rounded-lg hover:border-gray-600 transition-all">
+                <div class="group flex items-center justify-between p-3 bg-gray-900/40 border border-gray-700/50 rounded-lg hover:border-blue-600/50 hover:bg-gray-800/60 transition-all cursor-default" 
+                     ${contextMenu}
+                     title="${type === 'company' ? 'Right-click to open LinkedIn' : ''}">
                     <div class="flex-1 min-w-0 mr-4">
-                        <div class="text-sm font-bold text-white truncate">${escapeHtml(displayValue)}</div>
-                        <div class="text-[10px] text-gray-400 uppercase tracking-tighter font-black">${item.count} dismissals</div>
+                        <div class="text-sm font-bold text-white truncate group-hover:text-blue-100">${escapeHtml(displayValue)}</div>
+                        <div class="flex items-center space-x-2 mt-0.5">
+                            <div class="text-[10px] text-gray-400 uppercase tracking-tighter font-black">${item.count} dismissals</div>
+                            ${type === 'company' ? '<div class="w-1 h-1 bg-gray-700 rounded-full"></div><div class="text-[9px] text-gray-600 font-mono">ID: ' + blockValue + '</div>' : ''}
+                        </div>
                     </div>
                     <button onclick="addFromSuggestion('${type}', '${blockValue.replace(/'/g, "\\'")}')" 
-                            class="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-md text-[10px] font-bold uppercase transition-all whitespace-nowrap">
+                            class="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 hover:text-white text-blue-400 rounded-md text-[10px] font-bold uppercase transition-all whitespace-nowrap shadow-lg">
                         Add Block
                     </button>
                 </div>
             `;
-        }).join('');
+        }).join('<div class="h-2"></div>');
     } catch (e) {
         console.error("Suggestions error:", e);
         container.innerHTML = '<div class="text-red-400 p-4">Error loading suggestions</div>';

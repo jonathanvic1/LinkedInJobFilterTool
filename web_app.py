@@ -380,7 +380,7 @@ def get_blocklist_suggestions(request: Request):
     # 1. Get raw history
     raw_data = db.get_raw_dismissed_data(user_id)
     if not raw_data:
-        return {"job_titles": [], "companies": []}
+        return {"job_titles": [], "companies": [], "total_eligible_job_titles": 0, "total_eligible_companies": 0}
 
     # 2. Get current blocklists to filter
     current_titles = [t.lower().strip() for t in db.get_blocklist("job_title", user_id)]
@@ -395,6 +395,17 @@ def get_blocklist_suggestions(request: Request):
     company_counts = {}
     company_name_map = {} # map slug to display name
 
+    def is_title_effectively_blocked(title, blocklist):
+        if not title: return True
+        t_low = title.lower()
+        for b in blocklist:
+            if not b: continue
+            # Use same word-boundary logic as scraper
+            pattern = rf"\b{re.escape(b.lower())}\b"
+            if re.search(pattern, t_low):
+                return True
+        return False
+
     for row in raw_data:
         title = row.get('title')
         co_name = row.get('company')
@@ -402,7 +413,7 @@ def get_blocklist_suggestions(request: Request):
         
         if title:
             t_norm = title.strip()
-            if t_norm.lower() not in current_titles:
+            if not is_title_effectively_blocked(t_norm, current_titles):
                 title_counts[t_norm] = title_counts.get(t_norm, 0) + 1
         
         if co_url:
@@ -415,18 +426,45 @@ def get_blocklist_suggestions(request: Request):
                 if co_name:
                     company_name_map[slug] = co_name
 
-    # Sort and return top 20
-    top_titles = sorted(title_counts.items(), key=lambda x: x[1], reverse=True)[:20]
+    # Filter for > 5 dismissals
+    eligible_titles = {k: v for k, v in title_counts.items() if v >= 5}
+    eligible_companies = {k: v for k, v in company_counts.items() if v >= 5}
+
+    # Sort all eligible items by count descending
+    sorted_title_items = sorted(eligible_titles.items(), key=lambda x: x[1], reverse=True)
+    
+    top_titles = []
+    seen_title_blockers = []
+    
+    for title, count in sorted_title_items:
+        if len(top_titles) >= 20:
+                break
+        
+        # Check if this title is already 'covered' by a title we already picked for the top 20
+        # or if it would cover one we already picked (favor the one with more dismissals)
+        is_redundant = False
+        for seen in seen_title_blockers:
+            # If current title contains 'seen' as a word, it's redundant
+            if re.search(rf"\b{re.escape(seen.lower())}\b", title.lower()):
+                is_redundant = True
+                break
+        
+        if not is_redundant:
+            top_titles.append({"item": title, "count": count})
+            seen_title_blockers.append(title)
+
     top_companies = []
-    sorted_slugs = sorted(company_counts.items(), key=lambda x: x[1], reverse=True)[:20]
+    sorted_slugs = sorted(eligible_companies.items(), key=lambda x: x[1], reverse=True)[:20]
     
     for slug, count in sorted_slugs:
         name = company_name_map.get(slug, slug)
         top_companies.append({"item": slug, "display_name": name, "count": count})
 
     return {
-        "job_titles": [{"item": t, "count": c} for t, c in top_titles],
-        "companies": top_companies
+        "job_titles": top_titles,
+        "companies": top_companies,
+        "total_eligible_job_titles": len(eligible_titles),
+        "total_eligible_companies": len(eligible_companies)
     }
 
 @app.get("/api/market-pulse")
