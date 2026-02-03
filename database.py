@@ -563,19 +563,36 @@ class Database:
     def save_user_settings(self, user_id, linkedin_cookie, page_delay=2.0, job_delay=1.0, scrape_concurrency=5, dismiss_concurrency=2):
         """Save or update user settings."""
         if not self.client or not user_id: return False
+
+        data = {
+            "user_id": user_id,
+            "linkedin_cookie": linkedin_cookie,
+            "page_delay": page_delay,
+            "job_delay": job_delay,
+            "scrape_concurrency": scrape_concurrency,
+            "dismiss_concurrency": dismiss_concurrency,
+            "updated_at": datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
+        }
+
         try:
-            data = {
-                "user_id": user_id,
-                "linkedin_cookie": linkedin_cookie,
-                "page_delay": page_delay,
-                "job_delay": job_delay,
-                "scrape_concurrency": scrape_concurrency,
-                "dismiss_concurrency": dismiss_concurrency,
-                "updated_at": datetime.now(timezone(timedelta(hours=-5))).replace(microsecond=0).isoformat()
-            }
             self.client.table("user_settings").upsert(data).execute()
             return True
         except Exception as e:
+            error_str = str(e)
+            # Handle missing columns (PGRST204) for users with older schema
+            if 'PGRST204' in error_str or 'Could not find the' in error_str:
+                print(f"   ⚠️ DB Schema Mismatch: user_settings table missing columns. Retrying with basic fields.")
+                # Fallback: remove new fields
+                fallback_data = data.copy()
+                fallback_data.pop('scrape_concurrency', None)
+                fallback_data.pop('dismiss_concurrency', None)
+                try:
+                    self.client.table("user_settings").upsert(fallback_data).execute()
+                    return True
+                except Exception as e2:
+                    print(f"   ⚠️ DB Error (save_user_settings retry): {e2}")
+                    return False
+                    
             print(f"   ⚠️ DB Error (save_user_settings): {e}")
             return False
 
