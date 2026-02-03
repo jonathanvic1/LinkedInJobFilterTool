@@ -1025,7 +1025,7 @@ class LinkedInScraper:
                     for start in offsets
                 }
                 
-                for future in concurrent.futures.as_completed(future_to_offset):
+                for future in as_completed(future_to_offset):
                     start = future_to_offset[future]
                     try:
                         page_jobs, _ = future.result()
